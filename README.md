@@ -67,6 +67,74 @@ Still intentionally not part of v1.0:
 - Custom trained wakewords.
 - Production-grade CI for firmware builds.
 
+## Local Speech Recognition (STT)
+
+The bridge supports local STT via **faster-whisper** with **CTranslate2** backend, running entirely on-device without cloud dependencies.
+
+### Setup
+
+Install faster-whisper (includes Apple Silicon native wheels):
+
+```bash
+.venv/bin/python -m pip install faster-whisper
+```
+
+### Configuration
+
+In `.env`, set:
+
+```env
+H2S_STT_PROVIDER=local
+H2S_STT_LANGUAGE=en
+```
+
+Optional overrides:
+
+```env
+H2S_LOCAL_STT_MODEL=medium       # small, medium, large-v3-turbo
+H2S_LOCAL_STT_COMPUTE=int8       # int8, float32 (auto-fallback)
+```
+
+In `config/pairs.json`, ensure the speech section has:
+
+```json
+{
+  "speech": {
+    "provider": "local",
+    "language": "en"
+  }
+}
+```
+
+### Performance
+
+| Model | Compute Type | Memory | Inference Time* |
+|-------|-------------|--------|-----------------|
+| small | int8 | ~1GB | ~0.8x real-time |
+| medium | int8 | ~3GB | ~2.0x real-time |
+| large-v3-turbo | int8 | ~6GB | ~3.5x real-time |
+
+*Relative to real-time audio duration (lower is faster)
+
+### Accuracy Test
+
+Tested with 20 synthetic English speech samples (edge-tts, en-GB-SoniaNeural):
+
+- 20/20 samples transcribed successfully
+- 13/20 exact matches (65%)
+- Approximate WER: ~15%
+- All mismatches are cosmetic: number normalization ("twenty two" → "22"), word splitting ("goodnight" → "good night"), punctuation differences
+
+No actual recognition failures — suitable for command dispatch and conversation.
+
+### Disabling Cloud STT
+
+Clear the Groq API key to prevent fallback:
+
+```env
+H2S_GROQ_API_KEY=
+```
+
 ## Architecture
 
 Each Hermes/StackChan pair is isolated.
