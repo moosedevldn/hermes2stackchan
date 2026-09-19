@@ -1,0 +1,48 @@
+{
+  "mqtt": {
+    "host": "localhost",
+    "port": 1883,
+    "client_id": "hermes2stackchan-bridge",
+    "username": null,
+    "password": null,
+    "tls": false
+  },
+  "hermes": {
+    "base_url": "http://127.0.0.1:49159",
+    "model": "default",
+    "api_key": null,
+    "timeout_s": 30
+  },
+  "speech": {
+    "provider": "groq",
+    "groq_model": "whisper-large-v3-turbo",
+    "language": "en",
+    "tts_engine": "edge",
+    "edge_tts_voice": "en-GB-SoniaNeural",
+    "edge_tts_rate": "+5%"
+  },
+  "companion": {
+    "state_store_path": "~/.hermes/hermes2stackchan/companion_state.json",
+    "history_store_path": "~/.hermes/hermes2stackchan/interaction_history.jsonl",
+    "telemetry_store_path": "~/.hermes/hermes2stackchan/telemetry.jsonl",
+    "history_keep": 200,
+    "telemetry_enabled": true
+  },
+  "pairs": [
+    {
+      "pair_id": "jeeves",
+      "hermes_id": "hermes-jeeves",
+      "stackchan_id": "stackchan-jeeves",
+      "mqtt_prefix": "hermes-stackchan/jeeves",
+      "capabilities_file": "capabilities/bridge-capabilities-jeeves.md",
+      "personality_file": "personalities/hermes-jeeves.md",
+      "profile": {
+        "mood_default": "calm",
+        "privacy_mode": "normal",
+        "proactivity": "balanced",
+        "wakeword": "Computer",
+        "voice": "en-GB-SoniaNeural"
+      }
+    }
+  ]
+}
