@@ -40,7 +40,7 @@
         "mood_default": "calm",
         "privacy_mode": "normal",
         "proactivity": "balanced",
-        "wakeword": "Computer",
+        "wakeword": "Jeeves",
         "voice": "en-GB-SoniaNeural"
       }
     }
