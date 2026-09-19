@@ -205,6 +205,9 @@ class SpeechConfig:
     groq_api_key: str | None = None
     groq_url: str = "https://api.groq.com/openai/v1/audio/transcriptions"
     groq_model: str = "whisper-large-v3-turbo"
+    # Local STT options (faster-whisper)
+    local_stt_model: str | None = None
+    local_stt_compute: str = "float16"
     language: str = "de"
     prompt: str = "Deutsch. StackChan, Hermes, Wollux. Kurze Befehle und Fragen."
     timeout_s: float = 30.0
@@ -5865,11 +5868,82 @@ def transcribe_wav_groq_bytes(audio: bytes, speech: SpeechConfig) -> str:
     return text.strip()
 
 
+
+def transcribe_wav_local_bytes(audio: bytes, speech: SpeechConfig) -> str:
+    """Transcribe WAV audio using faster-whisper (CTranslate2) running locally."""
+    try:
+        from faster_whisper import WhisperModel
+    except ModuleNotFoundError:
+        raise ConfigError(
+            "faster-whisper not installed. "
+            "Install with: pip install faster-whisper"
+        )
+
+    model_size = speech.local_stt_model or "medium"
+    compute_type = speech.local_stt_compute or "int8"
+    language = speech.language or None
+
+    # Try the requested compute type; fall back through int8 → float32
+    _compute_types = [compute_type, "int8", "float32"]
+    model = None
+    actual_compute = compute_type
+    last_exc: Exception | None = None
+    for _ct in _compute_types:
+        try:
+            model = WhisperModel(
+                model_size,
+                device="auto",
+                compute_type=_ct,
+                device_index=0,
+            )
+            actual_compute = _ct
+            break
+        except Exception as exc:
+            last_exc = exc
+            continue
+    if model is None:
+        raise ConfigError(
+            f"Could not load faster-whisper model with any compute type "
+            f"({', '.join(_compute_types)}): {last_exc}"
+        )
+
+    # faster-whisper uses pyav which needs a file-like object, not raw bytes.
+    # Wrap audio bytes in a BytesIO with a read() method.
+    from io import BytesIO
+    audio_file = BytesIO(audio)
+    segments, info = model.transcribe(
+        audio_file,
+        language=language,
+        beam_size=5,
+        vad_filter=True,
+        vad_parameters=dict(min_silence_duration_ms=500),
+    )
+
+    text_parts = []
+    for segment in segments:
+        text_parts.append(segment.text.strip())
+
+    text = " ".join(text_parts).strip()
+    if not text:
+        raise ConfigError("local STT returned empty transcription")
+
+    print(
+        f"[bridge] local STT ({model_size}, {actual_compute}): "
+        f"{len(text)} chars, {info.duration:.1f}s, "
+        f"language={info.language} ({info.language_probability:.0%})"
+    )
+    return text
+
+
+
 def transcribe_audio_bytes(audio: bytes, speech: SpeechConfig) -> tuple[str, str]:
     provider = speech.provider.lower()
-    if provider != "groq":
+    if provider == "groq":
+        return transcribe_wav_groq_bytes(audio, speech), "groq"
+    elif provider == "local":
+        return transcribe_wav_local_bytes(audio, speech), "local"
+    else:
         raise ConfigError(f"unsupported STT provider for bridge HTTP audio: {speech.provider}")
-    return transcribe_wav_groq_bytes(audio, speech), "groq"
 
 
 def archive_audio_if_requested(
