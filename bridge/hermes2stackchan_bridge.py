@@ -22,6 +22,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+import wave
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Event, RLock, Thread, Timer
@@ -47,6 +48,10 @@ PITCH_TARGET_MAX_PCT = 100
 DEFAULT_CONFIG = Path("config/pairs.json")
 EXAMPLE_CONFIG = Path("config/pairs.example.json")
 DEFAULT_ENV = Path(".env")
+# Repo root is the bridge package's parent (bridge/ -> hermes2stackchan/). The
+# default Piper voice ships under <repo>/piper-voices/, so resolve it there.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_PIPER_VOICE = _REPO_ROOT / "piper-voices" / "en_GB-northern_english_male-medium.onnx"
 DEFAULT_REMINDER_STORE = "~/.hermes/hermes2stackchan/reminders.json"
 DEFAULT_COMPANION_STATE_STORE = "~/.hermes/hermes2stackchan/companion_state.json"
 DEFAULT_INTERACTION_HISTORY_STORE = "~/.hermes/hermes2stackchan/interaction_history.jsonl"
@@ -220,6 +225,9 @@ class SpeechConfig:
     edge_tts_python: str = ""
     edge_tts_voice: str = "de-DE-KatjaNeural"
     edge_tts_rate: str = "+8%"
+    # Local TTS options (Piper / piper-tts). Path to the .onnx voice model; the
+    # .onnx.json config is auto-derived beside it by PiperVoice.load().
+    piper_voice: str | None = None
     bridge_public_url: str = ""
     display_duration_ms: int = 9000
 
@@ -347,6 +355,11 @@ def load_config(
         edge_tts_python=env.get("H2S_EDGE_TTS_PYTHON") or str(speech_raw.get("edge_tts_python") or ""),
         edge_tts_voice=env.get("H2S_EDGE_TTS_VOICE") or str(speech_raw.get("edge_tts_voice") or "de-DE-KatjaNeural"),
         edge_tts_rate=env.get("H2S_EDGE_TTS_RATE") or str(speech_raw.get("edge_tts_rate") or "+8%"),
+        piper_voice=(
+            env.get("H2S_PIPER_VOICE")
+            or str(speech_raw.get("piper_voice") or "")
+            or str(DEFAULT_PIPER_VOICE)
+        ),
         bridge_public_url=(
             env.get("H2S_BRIDGE_PUBLIC_URL")
             or bridge_base_url_from_audio_url(env.get("H2S_BRIDGE_AUDIO_URL"))
@@ -5970,6 +5983,72 @@ def tts_dir_for(speech: SpeechConfig) -> Path:
     return path
 
 
+def make_tts_wav_piper(text: str, speech: SpeechConfig, out_path: Path) -> None:
+    """Synthesize ``text`` with local Piper and write a 16k mono s16 WAV to ``out_path``.
+
+    Mirrors the house style of the local STT adapter: lazy import with an
+    actionable install hint, then a graceful in-process synthesis. The raw
+    Piper output (22050 Hz mono s16) is resampled to 16000 Hz mono s16 with
+    ffmpeg so downstream audio is byte-for-byte the same format as the edge path.
+    """
+    try:
+        from piper import PiperVoice
+    except ModuleNotFoundError:
+        raise ConfigError(
+            "piper-tts not installed. Install with: pip install piper-tts"
+        )
+
+    # Resolve the .onnx model path. speech.piper_voice is already defaulted to
+    # the project-local voice in load_config(); expanduser handles ~/ paths.
+    model_path = Path(speech.piper_voice or str(DEFAULT_PIPER_VOICE)).expanduser()
+    if not model_path.exists():
+        raise ConfigError(
+            f"Piper voice model not found: {model_path} "
+            f"(set H2S_PIPER_VOICE to the path of an .onnx file)"
+        )
+
+    # PiperVoice.load() derives the .onnx.json config path from model_path when
+    # none is passed, exactly as the bundled CLI does.
+    voice = PiperVoice.load(model_path)
+
+    # Synthesize into a raw 22050 Hz mono s16 WAV using the first chunk's
+    # header values (this is how the piper CLI writes WAVs), then resample.
+    raw_path = out_path.with_suffix(".piper.raw.wav")
+    with wave.open(str(raw_path), "wb") as wav_file:
+        wav_params_set = False
+        for audio_chunk in voice.synthesize(text, None):
+            if not wav_params_set:
+                wav_file.setframerate(audio_chunk.sample_rate)
+                wav_file.setsampwidth(audio_chunk.sample_width)
+                wav_file.setnchannels(audio_chunk.sample_channels)
+                wav_params_set = True
+            wav_file.writeframes(audio_chunk.audio_int16_bytes)
+
+    # Resample to the same 16k mono s16 the edge branch produces.
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-loglevel",
+            "error",
+            "-i",
+            str(raw_path),
+            "-ac",
+            "1",
+            "-ar",
+            "16000",
+            "-sample_fmt",
+            "s16",
+            str(out_path),
+        ],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        timeout=30,
+    )
+    raw_path.unlink(missing_ok=True)
+
+
 def make_tts_wav(text: str, speech: SpeechConfig, request_id: str) -> str:
     clean = text.strip()
     if not clean:
@@ -6022,6 +6101,8 @@ def make_tts_wav(text: str, speech: SpeechConfig, request_id: str) -> str:
             timeout=30,
         )
         tmp_mp3.unlink(missing_ok=True)
+    elif engine in {"local", "piper", "local-tts", "local_tts"}:
+        make_tts_wav_piper(clean, speech, out_path)
     else:
         subprocess.run(
             ["espeak-ng", "-v", "de", "-s", "180", "-w", str(out_path), clean],
