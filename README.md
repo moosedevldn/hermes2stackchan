@@ -135,6 +135,71 @@ Clear the Groq API key to prevent fallback:
 H2S_GROQ_API_KEY=
 ```
 
+## Local Text-to-Speech (TTS)
+
+The bridge supports local TTS via **Piper** (piper-tts 1.8.0, ONNX), running
+entirely on-device without cloud dependencies. Output is resampled to 16 kHz
+mono s16 WAV — the same format the cloud Edge path produces — so downstream
+audio handling is unchanged.
+
+### Setup
+
+Install piper-tts (bundles espeak-ng data and onnxruntime; Apple Silicon
+native wheels):
+
+```bash
+.venv/bin/python -m pip install piper-tts
+```
+
+Download a voice model into the project (this is the only network step — a
+one-time ~60 MB download from HuggingFace, the same class of model fetch as
+the Whisper model):
+
+```bash
+.venv/bin/python -m piper.download_voices en_GB-northern_english_male-medium \
+  --download-dir piper-voices/
+```
+
+The default voice is **en_GB-northern_english_male-medium** (British, male,
+22 050 Hz native). Voice *names do not reliably encode gender* — verify against
+the voice's HuggingFace MODEL_CARD before choosing (e.g. `en_GB-cori-medium`
+and `en_GB-jenny_dioco-medium` are female despite neutral names).
+
+### Configuration
+
+In `.env`, set:
+
+```env
+H2S_TTS_ENGINE=local
+```
+
+Optional override for a different voice:
+
+```env
+H2S_PIPER_VOICE=piper-voices/en_GB-northern_english_male-medium.onnx
+```
+
+When `H2S_PIPER_VOICE` is unset, the bridge defaults to the project-local
+`piper-voices/en_GB-northern_english_male-medium.onnx`. The `.onnx.json`
+config is auto-derived beside the model by Piper.
+
+### Performance
+
+Measured on Apple Silicon (M-series), model warm (first phrase includes a
+one-time model load):
+
+| Phrase length | Synthesis time | Notes |
+|---------------|---------------|-------|
+| 30–45 chars | **0.55–0.56 s** | 5/5 under the 2 s target |
+
+Well within the Phase 2 definition of done (<2 s for phrases under 15 words).
+
+### Disabling Cloud TTS
+
+Set `H2S_TTS_ENGINE=local` to use Piper. To fall back to Edge TTS, set
+`H2S_TTS_ENGINE=edge` (requires internet + an `edge_tts` install). The espeak-ng
+fallback is used only for any other `H2S_TTS_ENGINE` value.
+
 ## Architecture
 
 Each Hermes/StackChan pair is isolated.
