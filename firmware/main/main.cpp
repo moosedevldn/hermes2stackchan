@@ -1247,7 +1247,7 @@ void init_display()
     }
     ESP_LOGI(kTag, "init_display: panel init OK");
 
-    esp_lcd_panel_invert_color(g_panel, false);
+    esp_lcd_panel_invert_color(g_panel, true);
     esp_lcd_panel_swap_xy(g_panel, false);
     esp_lcd_panel_mirror(g_panel, false, false);
     esp_lcd_panel_disp_on_off(g_panel, true);
