@@ -1174,8 +1174,6 @@ bool lcd_color_transfer_done(esp_lcd_panel_io_handle_t, esp_lcd_panel_io_event_d
 
 void init_display()
 {
-    ESP_LOGI(kTag, "init_display: starting");
-
     spi_bus_config_t bus_config = {};
     bus_config.mosi_io_num = GPIO_NUM_37;
     bus_config.miso_io_num = GPIO_NUM_NC;
@@ -1183,117 +1181,73 @@ void init_display()
     bus_config.quadwp_io_num = GPIO_NUM_NC;
     bus_config.quadhd_io_num = GPIO_NUM_NC;
     bus_config.max_transfer_sz = kWidth * kLcdDmaTargetLines * sizeof(uint16_t);
-
-    ESP_LOGI(kTag, "init_display: initializing SPI bus");
-    esp_err_t err = spi_bus_initialize(SPI3_HOST, &bus_config, SPI_DMA_CH_AUTO);
-    if (err != ESP_OK) {
-        ESP_LOGE(kTag, "init_display: SPI bus init failed: %s", esp_err_to_name(err));
-        return;
-    }
-    ESP_LOGI(kTag, "init_display: SPI bus OK");
+    ESP_ERROR_CHECK(spi_bus_initialize(SPI3_HOST, &bus_config, SPI_DMA_CH_AUTO));
 
     esp_lcd_panel_io_spi_config_t io_config = {};
     io_config.cs_gpio_num = GPIO_NUM_3;
     io_config.dc_gpio_num = GPIO_NUM_35;
     io_config.spi_mode = 2;
-    io_config.pclk_hz = 40 * 1000 * 1000;
+    io_config.pclk_hz = 10 * 1000 * 1000;
     io_config.trans_queue_depth = 1;
     io_config.lcd_cmd_bits = 8;
     io_config.lcd_param_bits = 8;
-
-    ESP_LOGI(kTag, "init_display: creating SPI panel IO");
-    err = esp_lcd_new_panel_io_spi(SPI3_HOST, &io_config, &g_panel_io);
-    if (err != ESP_OK) {
-        ESP_LOGE(kTag, "init_display: SPI panel IO failed: %s", esp_err_to_name(err));
-        return;
-    }
-    ESP_LOGI(kTag, "init_display: SPI panel IO OK");
+    ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi(SPI3_HOST, &io_config, &g_panel_io));
 
     g_lcd_transfer_done = xSemaphoreCreateBinary();
     if (g_lcd_transfer_done) {
         esp_lcd_panel_io_callbacks_t callbacks = {};
         callbacks.on_color_trans_done = lcd_color_transfer_done;
-        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_panel_io_register_event_callbacks(g_panel_io, &callbacks, g_lcd_transfer_done));
+        ESP_ERROR_CHECK(esp_lcd_panel_io_register_event_callbacks(g_panel_io, &callbacks, g_lcd_transfer_done));
     } else {
-        ESP_LOGW(kTag, "init_display: LCD transfer semaphore unavailable");
+        ESP_LOGW(kTag, "LCD transfer semaphore unavailable; DMA buffers cannot be synchronized");
     }
 
     esp_lcd_panel_dev_config_t panel_config = {};
     panel_config.reset_gpio_num = GPIO_NUM_NC;
     panel_config.rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR;
     panel_config.bits_per_pixel = 16;
+    ESP_ERROR_CHECK(esp_lcd_new_panel_ili9341(g_panel_io, &panel_config, &g_panel));
 
-    ESP_LOGI(kTag, "init_display: creating ILI9341 panel");
-    err = esp_lcd_new_panel_ili9341(g_panel_io, &panel_config, &g_panel);
-    if (err != ESP_OK) {
-        ESP_LOGE(kTag, "init_display: ILI9341 panel create failed: %s", esp_err_to_name(err));
-        return;
-    }
-    ESP_LOGI(kTag, "init_display: ILI9341 panel created");
-
-    ESP_LOGI(kTag, "init_display: resetting panel");
-    err = esp_lcd_panel_reset(g_panel);
-    if (err != ESP_OK) {
-        ESP_LOGE(kTag, "init_display: panel reset failed: %s", esp_err_to_name(err));
-        return;
-    }
-    ESP_LOGI(kTag, "init_display: panel reset OK");
-
-    ESP_LOGI(kTag, "init_display: initializing panel");
-    err = esp_lcd_panel_init(g_panel);
-    if (err != ESP_OK) {
-        ESP_LOGE(kTag, "init_display: panel init failed: %s", esp_err_to_name(err));
-        return;
-    }
-    ESP_LOGI(kTag, "init_display: panel init OK");
-
-    esp_lcd_panel_invert_color(g_panel, true);
-    esp_lcd_panel_swap_xy(g_panel, false);
-    esp_lcd_panel_mirror(g_panel, false, false);
-    esp_lcd_panel_disp_on_off(g_panel, true);
-
-    ESP_LOGI(kTag, "init_display: complete");
+    ESP_ERROR_CHECK(esp_lcd_panel_reset(g_panel));
+    ESP_ERROR_CHECK(esp_lcd_panel_init(g_panel));
+    ESP_ERROR_CHECK(esp_lcd_panel_invert_color(g_panel, false));
+    ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(g_panel, false));
+    ESP_ERROR_CHECK(esp_lcd_panel_mirror(g_panel, false, false));
+    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(g_panel, true));
 }
 
 void init_framebuffer()
 {
-    ESP_LOGI(kTag, "init_framebuffer: starting");
-
     g_display_mutex = xSemaphoreCreateMutex();
     if (!g_display_mutex) {
-        ESP_LOGW(kTag, "init_framebuffer: display mutex unavailable");
+        ESP_LOGW(kTag, "display mutex unavailable");
     }
-    ESP_LOGI(kTag, "init_framebuffer: creating framebuffer (%d bytes)", kFrameBufferBytes);
     g_framebuffer = static_cast<uint16_t*>(
         heap_caps_malloc(kFrameBufferBytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
     if (!g_framebuffer) {
-        ESP_LOGW(kTag, "init_framebuffer: SPIRAM framebuffer failed, trying internal RAM");
         g_framebuffer = static_cast<uint16_t*>(heap_caps_malloc(kFrameBufferBytes, MALLOC_CAP_8BIT));
     }
     if (g_framebuffer) {
         std::fill_n(g_framebuffer, kWidth * kHeight, kBlack);
-        ESP_LOGI(kTag, "init_framebuffer: framebuffer ready: %u bytes", static_cast<unsigned>(kFrameBufferBytes));
+        ESP_LOGI(kTag, "display framebuffer ready: %u bytes", static_cast<unsigned>(kFrameBufferBytes));
     } else {
-        ESP_LOGE(kTag, "init_framebuffer: framebuffer allocation failed entirely");
+        ESP_LOGW(kTag, "display framebuffer unavailable; using direct drawing");
     }
 
     for (int lines = kLcdDmaTargetLines; lines >= 1; lines /= 2) {
-        ESP_LOGI(kTag, "init_framebuffer: trying DMA buffer with %d lines", lines);
         g_lcd_dma_buffer = static_cast<uint16_t*>(
             heap_caps_malloc(kWidth * lines * sizeof(uint16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA));
         if (g_lcd_dma_buffer) {
             g_lcd_dma_lines = lines;
-            ESP_LOGI(kTag, "init_framebuffer: DMA line buffer ready: %d lines, %u bytes",
+            ESP_LOGI(kTag, "display DMA line buffer ready: %d lines, %u bytes",
                      g_lcd_dma_lines,
                      static_cast<unsigned>(kWidth * lines * sizeof(uint16_t)));
             break;
         }
     }
     if (!g_lcd_dma_buffer) {
-        ESP_LOGW(kTag, "init_framebuffer: DMA line buffer unavailable");
+        ESP_LOGW(kTag, "display DMA line buffer unavailable; LCD driver may allocate DMA memory");
     }
-
-    ESP_LOGI(kTag, "init_framebuffer: complete");
 }
 
 void draw_bitmap_dma(int x, int y, int w, int h, const uint16_t* pixels)
@@ -1331,12 +1285,18 @@ void draw_bitmap_dma(int x, int y, int w, int h, const uint16_t* pixels)
 
 bool begin_frame()
 {
+    ESP_LOGI(kTag, "begin_frame: fb=%p mutex=%p", (void*)g_framebuffer, (void*)g_display_mutex);
     if (!g_framebuffer) {
+        ESP_LOGW(kTag, "begin_frame: no framebuffer");
         return false;
     }
-    if (g_display_mutex && xSemaphoreTake(g_display_mutex, pdMS_TO_TICKS(250)) != pdTRUE) {
-        ESP_LOGW(kTag, "display framebuffer busy; falling back to direct drawing");
-        return false;
+    if (g_display_mutex) {
+        ESP_LOGI(kTag, "begin_frame: acquiring mutex");
+        if (xSemaphoreTake(g_display_mutex, pdMS_TO_TICKS(250)) != pdTRUE) {
+            ESP_LOGW(kTag, "begin_frame: mutex timeout");
+            return false;
+        }
+        ESP_LOGI(kTag, "begin_frame: mutex ok");
     }
     g_framebuffer_active = true;
     return true;
@@ -1344,12 +1304,16 @@ bool begin_frame()
 
 void flush_frame()
 {
+    ESP_LOGI(kTag, "flush_frame: active=%d fb=%p", g_framebuffer_active, (void*)g_framebuffer);
     if (!g_framebuffer_active || !g_framebuffer) {
+        ESP_LOGW(kTag, "flush_frame: skipping");
         return;
     }
     g_framebuffer_active = false;
     if (g_panel) {
+        ESP_LOGI(kTag, "flush_frame: calling draw_bitmap_dma");
         draw_bitmap_dma(0, 0, kWidth, kHeight, g_framebuffer);
+        ESP_LOGI(kTag, "flush_frame: dma returned");
     }
     if (g_display_mutex) {
         xSemaphoreGive(g_display_mutex);
@@ -1873,7 +1837,7 @@ void draw_wrapped_message(const char* title, const char* message, uint16_t accen
     wake_display_if_needed();
     copy_ui_mode("display");
     FrameGuard frame;
-    clear(kBlack);
+    clear(kWhite);
     draw_centered_text(18, title, 2, accent);
     draw_rect(26, 48, 268, 2, accent);
 
@@ -1932,7 +1896,7 @@ void draw_word_message(const char* title, const char* word, int index, int total
     wake_display_if_needed();
     copy_ui_mode("display");
     FrameGuard frame;
-    clear(kBlack);
+    clear(kWhite);
     draw_centered_text(16, title, 2, accent);
     draw_rect(24, 45, 272, 2, accent);
 
@@ -2318,7 +2282,7 @@ void draw_life_face_frame(const char* base_emotion, int intensity_pct,
 	    const int eye_y = 84 + eye_dy;
 	    const int mouth_y = 168 + eye_dy / 4;
 
-    clear(kBlack);
+    clear(kWhite);
 
     if (eye_ry <= 4) {
 	        draw_flat_eye(left_x, eye_y, 56, 0, face_color);
@@ -2361,7 +2325,7 @@ void draw_custom_life_face_frame(int left_rx, int left_ry, int left_pupil_dx, in
 		const int eye_y = 84;
 		const int mouth_y = 168;
 
-	clear(kBlack);
+	clear(kWhite);
 	if (left_ry <= 5) {
 		draw_single_eye_line(left_x, eye_y, left_tilt, eye_color);
 	} else {
@@ -2688,7 +2652,7 @@ void render_face_pose(const FacePose& pose)
     const int eye_y = 84;
     const int mouth_y = 168;
     FaceFrameGuard frame;
-    clear(kBlack);
+    clear(kWhite);
 
     if (pose.heart_eyes) {
         draw_tiny_heart(left_x, eye_y, 42, rgb565(255, 92, 138));
@@ -3030,7 +2994,7 @@ bool animate_face_fx_transition(const char* emotion, int intensity_pct)
 
         {
             FaceFrameGuard frame;
-            clear(kBlack);
+            clear(kWhite);
             if (!draw_mood_preset(emotion, intensity_pct)) {
                 g_face_blush_alpha_pct = target_blush;
                 g_face_hearts_alpha_pct = target_hearts;
@@ -3130,7 +3094,7 @@ void animate_transient_face(const char* emotion, int intensity_pct)
         const int phases[] = {0, 1, 2, 2, 1, 0};
         for (int phase : phases) {
             FaceFrameGuard frame;
-            clear(kBlack);
+            clear(kWhite);
             const uint16_t white = rgb565(245, 250, 255);
             const int pulse = clamp_int(base_intensity / 18, 0, 6);
             const int left_x = 105;
@@ -3173,7 +3137,7 @@ void animate_transient_face(const char* emotion, int intensity_pct)
 		const int offsets[] = {0, 2, 4, 4, 2, 0};
 		for (int offset : offsets) {
             FaceFrameGuard frame;
-            clear(kBlack);
+            clear(kWhite);
             const uint16_t warm = rgb565(255, 230, 120);
             const uint16_t white = rgb565(245, 250, 255);
             draw_mouth_curve(105, 86 + offset, 46, 18, false, warm);
@@ -3472,7 +3436,7 @@ void apply_robot_brow_pose(RobotFaceConfig& config, int brow_mode, int brow_phas
 RobotFaceConfig robot_face_config(const char* emotion, int intensity_pct)
 {
     RobotFaceConfig config = {};
-    config.line_color = rgb565(245, 248, 250);
+    config.line_color = kBlack;
     config.accent_color = config.line_color;
     const int energy = clamp_int(intensity_pct, 0, 100);
     const int awake_boost = (energy - 60) / 12;
@@ -3563,7 +3527,7 @@ RobotFaceConfig robot_face_config(const char* emotion, int intensity_pct)
 
 void draw_robot_face_config(RobotFaceConfig config, bool include_motion_gaze)
 {
-    const uint16_t screen = kBlack;
+    const uint16_t screen = kWhite;
     int look_x = config.look_x;
     int look_y = config.look_y;
     if (include_motion_gaze &&
@@ -3794,7 +3758,7 @@ bool animate_template_transient_face(const char* emotion, int intensity_pct)
 
 void draw_info_mini_face()
 {
-    const uint16_t line = rgb565(245, 248, 250);
+    const uint16_t line = kBlack;
     const uint16_t cutout = kBlack;
     const int ox = 232;
     const int oy = 158;
@@ -3824,10 +3788,10 @@ void draw_info_screen(const char* time_text, const char* date_text, const char* 
     copy_ui_mode("info");
     g_info_mode_active = true;
 
-    const uint16_t line = rgb565(245, 248, 250);
+    const uint16_t line = kBlack;
     const uint16_t dim = rgb565(52, 56, 60);
     FrameGuard frame;
-    clear(kBlack);
+    clear(kWhite);
     draw_centered_text(34, g_info_time, 7, line);
     draw_rect(42, 98, 236, 2, dim);
     draw_centered_text(122, g_info_weekday, 3, line);
@@ -3864,9 +3828,8 @@ void draw_face(const char* emotion, int intensity_pct)
 void display_boot()
 {
     ESP_LOGI(kTag, "display_boot: starting");
-    ESP_LOGI(kTag, "display_boot: drawing neutral face at 65%%");
+    g_force_face_redraw = true;
     draw_face("neutral", 65);
-    ESP_LOGI(kTag, "display_boot: neutral face drawn");
 }
 
 void display_error(const char* message)
@@ -6762,7 +6725,7 @@ void draw_image_from_url(const char* url, int width, int height, const char* cap
             xSemaphoreTake(g_display_mutex, pdMS_TO_TICKS(250));
         }
         if (draw_w < kWidth || draw_h < kHeight) {
-            clear(kBlack);
+            clear(kWhite);
         }
         draw_bitmap_dma(x, y, draw_w, draw_h, reinterpret_cast<const uint16_t*>(pixels));
         if (g_display_mutex) {
@@ -7767,7 +7730,7 @@ bool init_wifi()
                  CONFIG_STACKCHAN_WIFI_PASSWORD,
                  sizeof(wifi_config.sta.password));
     wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
-    // wifi_config.sta.sae_pwe_h2e = WPA3_SAE_PWE_BOTH;  // Commented out: causes crash on WPA2 networks
+    wifi_config.sta.sae_pwe_h2e = WPA3_SAE_PWE_BOTH;
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
