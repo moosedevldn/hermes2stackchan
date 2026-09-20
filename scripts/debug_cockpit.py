@@ -127,7 +127,7 @@ def existing_logs(paths: Iterable[Path]) -> list[Path]:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Stream bridge logs, MQTT, and serial monitor together.")
-    parser.add_argument("--pair", default=os.environ.get("H2S_PAIR_ID", "desk"), help="Pair id to watch.")
+    parser.add_argument("--pair", default=os.environ.get("H2S_PAIR_ID", "jeeves"), help="Pair id to watch.")
     parser.add_argument("--serial-port", default=find_serial_port(), help="ESP serial port, e.g. /dev/cu.usbmodem21301.")
     parser.add_argument("--idf-export", default=str(DEFAULT_IDF_EXPORT), help="Path to ESP-IDF export.sh.")
     parser.add_argument("--no-serial", action="store_true", help="Do not start ESP-IDF serial monitor.")

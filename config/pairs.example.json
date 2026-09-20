@@ -22,18 +22,18 @@
   },
   "pairs": [
     {
-      "pair_id": "desk",
-      "hermes_id": "hermes-desk",
-      "stackchan_id": "stackchan-desk",
-      "mqtt_prefix": "hermes-stackchan/desk",
-      "capabilities_file": "capabilities/bridge-capabilities-desk.md",
-      "personality_file": "personalities/hermes-desk.md",
+      "pair_id": "jeeves",
+      "hermes_id": "hermes-jeeves",
+      "stackchan_id": "jeevesrobot",
+      "mqtt_prefix": "hermes-stackchan/jeeves",
+      "capabilities_file": "capabilities/bridge-capabilities-jeeves.md",
+      "personality_file": "personalities/hermes-jeeves.md",
       "profile": {
-        "mood_default": "playful",
+        "mood_default": "calm",
         "privacy_mode": "normal",
-        "proactivity": "playful",
-        "wakeword": "Computer",
-        "voice": "de-DE-KatjaNeural"
+        "proactivity": "balanced",
+        "wakeword": "Jeeves",
+        "voice": "en-GB-SoniaNeural"
       }
     }
   ]

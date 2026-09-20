@@ -36,16 +36,16 @@ Known Pi paths:
 
 - Project: `/home/wollux/hermes2stackchan`
 - Service: `hermes2stackchan.service`
-- Service command: `/home/wollux/hermes2stackchan/.venv/bin/python -u -m bridge.hermes2stackchan_bridge --env .env run --pair desk --host 0.0.0.0 --port 8788 --touch-verbose`
+- Service command: `/home/wollux/hermes2stackchan/.venv/bin/python -u -m bridge.hermes2stackchan_bridge --env .env run --pair jeeves --host 0.0.0.0 --port 8788 --touch-verbose`
 - Bridge log: `/home/wollux/.hermes/logs/hermes2stackchan.log`
 - Bridge health: `http://127.0.0.1:8788/health`
 - Extended health: `http://127.0.0.1:8788/healthz`
 - StackChan IP normally seen in logs: `192.168.99.131`
-- MQTT namespace: `hermes-stackchan/desk/#`
+- MQTT namespace: `hermes-stackchan/jeeves/#`
 - Hermes Gateway service: `hermes-gateway.service`
 
 If `curl -fsS http://127.0.0.1:8788/health` returns
-`{"ok":true,"service":"hermes2stackchan-bridge","pair_id":"desk"}`, use this
+`{"ok":true,"service":"hermes2stackchan-bridge","pair_id":"jeeves"}`, use this
 skill's MQTT bridge instructions.
 
 ## When To Use
@@ -257,27 +257,27 @@ Do not put normal spoken answers into a `say` action. Use the top-level `reply`.
 
 Pair namespace:
 
-`hermes-stackchan/desk`
+`hermes-stackchan/jeeves`
 
 Important command topics:
 
-- `hermes-stackchan/desk/cmd/display`
-- `hermes-stackchan/desk/cmd/face`
-- `hermes-stackchan/desk/cmd/move`
-- `hermes-stackchan/desk/cmd/motion`
-- `hermes-stackchan/desk/cmd/led`
-- `hermes-stackchan/desk/cmd/device`
-- `hermes-stackchan/desk/cmd/sound`
-- `hermes-stackchan/desk/cmd/audio`
-- `hermes-stackchan/desk/cmd/system`
+- `hermes-stackchan/jeeves/cmd/display`
+- `hermes-stackchan/jeeves/cmd/face`
+- `hermes-stackchan/jeeves/cmd/move`
+- `hermes-stackchan/jeeves/cmd/motion`
+- `hermes-stackchan/jeeves/cmd/led`
+- `hermes-stackchan/jeeves/cmd/device`
+- `hermes-stackchan/jeeves/cmd/sound`
+- `hermes-stackchan/jeeves/cmd/audio`
+- `hermes-stackchan/jeeves/cmd/system`
 
 Important feedback topics:
 
-- `hermes-stackchan/desk/status`
-- `hermes-stackchan/desk/state/device_settings`
-- `hermes-stackchan/desk/ack`
-- `hermes-stackchan/desk/error`
-- `hermes-stackchan/desk/events`
+- `hermes-stackchan/jeeves/status`
+- `hermes-stackchan/jeeves/state/device_settings`
+- `hermes-stackchan/jeeves/ack`
+- `hermes-stackchan/jeeves/error`
+- `hermes-stackchan/jeeves/events`
 
 MQTT is for state and commands. Do not send binary audio over MQTT; audio goes over
 HTTP.
@@ -328,10 +328,10 @@ Useful diagnostics:
 
 ```bash
 cd /home/wollux/hermes2stackchan
-/home/wollux/hermes2stackchan/.venv/bin/python -m bridge.hermes2stackchan_bridge --env .env healthz --pair desk
-/home/wollux/hermes2stackchan/.venv/bin/python -m bridge.hermes2stackchan_bridge --env .env read-companion --pair desk --with-status
-/home/wollux/hermes2stackchan/.venv/bin/python -m bridge.hermes2stackchan_bridge --env .env set-companion --pair desk --privacy-mode focus
-/home/wollux/hermes2stackchan/.venv/bin/python -m bridge.hermes2stackchan_bridge --env .env list-history --pair desk
+/home/wollux/hermes2stackchan/.venv/bin/python -m bridge.hermes2stackchan_bridge --env .env healthz --pair jeeves
+/home/wollux/hermes2stackchan/.venv/bin/python -m bridge.hermes2stackchan_bridge --env .env read-companion --pair jeeves --with-status
+/home/wollux/hermes2stackchan/.venv/bin/python -m bridge.hermes2stackchan_bridge --env .env set-companion --pair jeeves --privacy-mode focus
+/home/wollux/hermes2stackchan/.venv/bin/python -m bridge.hermes2stackchan_bridge --env .env list-history --pair jeeves
 ```
 
 The bridge shows an animated thinking heartbeat while Hermes is processing:
@@ -376,7 +376,7 @@ If Wollux reports resets after motion:
 Current behavior:
 
 - Wakeword is expected to start the same recording path as touch.
-- Touch events are published to `hermes-stackchan/desk/events`.
+- Touch events are published to `hermes-stackchan/jeeves/events`.
 - Fast-touch bridge logic can turn LEDs green quickly while recording.
 - Audio WAV is posted to `/stackchan/audio`.
 - STT and TTS are bridge responsibilities.
@@ -422,9 +422,9 @@ Use the CLI only for manual diagnostics, not for proactive Telegram speech:
 
 ```bash
 cd /home/wollux/hermes2stackchan
-/home/wollux/hermes2stackchan/.venv/bin/python -m bridge.hermes2stackchan_bridge --env .env read-status --pair desk
-/home/wollux/hermes2stackchan/.venv/bin/python -m bridge.hermes2stackchan_bridge --env .env send-display --pair desk --text 'Text' --wait-ack
-/home/wollux/hermes2stackchan/.venv/bin/python -m bridge.hermes2stackchan_bridge --env .env send-face --pair desk --emotion happy --wait-ack
+/home/wollux/hermes2stackchan/.venv/bin/python -m bridge.hermes2stackchan_bridge --env .env read-status --pair jeeves
+/home/wollux/hermes2stackchan/.venv/bin/python -m bridge.hermes2stackchan_bridge --env .env send-display --pair jeeves --text 'Text' --wait-ack
+/home/wollux/hermes2stackchan/.venv/bin/python -m bridge.hermes2stackchan_bridge --env .env send-face --pair jeeves --emotion happy --wait-ack
 ```
 
 `send-say` is not the Telegram/proactive voice path. Avoid it unless explicitly

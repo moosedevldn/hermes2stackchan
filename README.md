@@ -15,8 +15,8 @@ This repository is already beyond the first MQTT smoke test. The current feature
 - ESP32-S3 firmware for StackChan.
 - Wi-Fi connection from firmware.
 - MQTT namespace per fixed pair: `hermes-stackchan/<pair-id>/...`.
-- Default pair: `desk`.
-- Retained status on `hermes-stackchan/desk/status`.
+- Default pair: `jeeves`.
+- Retained status on `hermes-stackchan/jeeves/status`.
 - Structured ACK, error, and event topics.
 - Display text/image commands are accepted for compatibility, and `send-info` shows a sticky time/date info mode with a small face.
 - Firmware-rendered Robot Face template moods from `robot-face.html`: dark panel, white eyes/mouth/brows, subtle emotions, calm blink/breathe/glance/mouth transients.
@@ -225,23 +225,23 @@ Rules:
 - The firmware validates again and enforces local hardware limits.
 - Binary audio is sent over HTTP, not MQTT.
 
-Default topics for pair `desk`:
+Default topics for pair `jeeves`:
 
 ```text
-hermes-stackchan/desk/cmd/display
-hermes-stackchan/desk/cmd/face
-hermes-stackchan/desk/cmd/move
-hermes-stackchan/desk/cmd/motion
-hermes-stackchan/desk/cmd/led
-hermes-stackchan/desk/cmd/device
-hermes-stackchan/desk/cmd/sound
-hermes-stackchan/desk/cmd/audio
-hermes-stackchan/desk/cmd/system
-hermes-stackchan/desk/status
-hermes-stackchan/desk/state/device_settings
-hermes-stackchan/desk/ack
-hermes-stackchan/desk/error
-hermes-stackchan/desk/events
+hermes-stackchan/jeeves/cmd/display
+hermes-stackchan/jeeves/cmd/face
+hermes-stackchan/jeeves/cmd/move
+hermes-stackchan/jeeves/cmd/motion
+hermes-stackchan/jeeves/cmd/led
+hermes-stackchan/jeeves/cmd/device
+hermes-stackchan/jeeves/cmd/sound
+hermes-stackchan/jeeves/cmd/audio
+hermes-stackchan/jeeves/cmd/system
+hermes-stackchan/jeeves/status
+hermes-stackchan/jeeves/state/device_settings
+hermes-stackchan/jeeves/ack
+hermes-stackchan/jeeves/error
+hermes-stackchan/jeeves/events
 ```
 
 ## Hardware And Services You Need
@@ -263,7 +263,7 @@ Known working pair from development:
 ```text
 Hermes/bridge host: Raspberry Pi
 StackChan IP:       assigned by Wi-Fi
-MQTT prefix:        hermes-stackchan/desk
+MQTT prefix:        hermes-stackchan/jeeves
 Wakeword:           Computer
 TTS voice:          de-DE-KatjaNeural
 STT model:          whisper-large-v3-turbo
@@ -307,7 +307,7 @@ sudo systemctl enable --now mosquitto
 Quick broker check:
 
 ```bash
-mosquitto_sub -t 'hermes-stackchan/desk/#' -v
+mosquitto_sub -t 'hermes-stackchan/jeeves/#' -v
 ```
 
 Leave that running in one terminal if you want to see all MQTT traffic.
@@ -343,11 +343,11 @@ cp .env.example .env
 Edit `.env`:
 
 ```env
-H2S_PAIR_ID=desk
-H2S_HERMES_ID=hermes-desk
-H2S_STACKCHAN_ID=stackchan-desk
-H2S_CAPABILITIES_FILE=capabilities/bridge-capabilities-desk.md
-H2S_PERSONALITY_FILE=personalities/hermes-desk.md
+H2S_PAIR_ID=jeeves
+H2S_HERMES_ID=hermes-jeeves
+H2S_STACKCHAN_ID=stackchan-jeeves
+H2S_CAPABILITIES_FILE=capabilities/bridge-capabilities-jeeves.md
+H2S_PERSONALITY_FILE=personalities/hermes-jeeves.md
 H2S_PAIR_MOOD=playful
 H2S_PRIVACY_MODE=normal
 H2S_PAIR_PROACTIVITY=playful
@@ -438,11 +438,11 @@ The service runs one multithreaded bridge process:
 Disable individual workers for debugging:
 
 ```bash
-h2s-bridge --env /opt/hermes2stackchan/.env run --pair desk --no-life
-h2s-bridge --env /opt/hermes2stackchan/.env run --pair desk --no-idle-sleep
-h2s-bridge --env /opt/hermes2stackchan/.env run --pair desk --no-power
-h2s-bridge --env /opt/hermes2stackchan/.env run --pair desk --no-sensors
-h2s-bridge --env /opt/hermes2stackchan/.env run --pair desk --touch-verbose
+h2s-bridge --env /opt/hermes2stackchan/.env run --pair jeeves --no-life
+h2s-bridge --env /opt/hermes2stackchan/.env run --pair jeeves --no-idle-sleep
+h2s-bridge --env /opt/hermes2stackchan/.env run --pair jeeves --no-power
+h2s-bridge --env /opt/hermes2stackchan/.env run --pair jeeves --no-sensors
+h2s-bridge --env /opt/hermes2stackchan/.env run --pair jeeves --touch-verbose
 ```
 
 ## 5: Configure And Flash Firmware
@@ -461,8 +461,8 @@ Set the firmware values in `.env`:
 H2S_WIFI_SSID=your-wifi
 H2S_WIFI_PASSWORD=your-wifi-password
 H2S_MQTT_URI=mqtt://192.168.99.58:1883
-H2S_PAIR_ID=desk
-H2S_STACKCHAN_ID=stackchan-desk
+H2S_PAIR_ID=jeeves
+H2S_STACKCHAN_ID=stackchan-jeeves
 H2S_BRIDGE_AUDIO_URL=http://192.168.99.58:8788/stackchan/audio
 H2S_WAKEWORD_LABEL=Computer
 H2S_WAKEWORD_MODEL_HINT=computer
@@ -553,32 +553,32 @@ python3.11 -m bridge.hermes2stackchan_bridge run --pair jeeves --no-life --no-in
 From the bridge checkout:
 
 ```bash
-scripts/h2s_bridge.sh watch --pair desk
+scripts/h2s_bridge.sh watch --pair jeeves
 ```
 
 Read status:
 
 ```bash
-scripts/h2s_bridge.sh read-status --pair desk
-scripts/h2s_bridge.sh status-health --pair desk
-scripts/h2s_bridge.sh healthz --pair desk
-scripts/h2s_bridge.sh read-companion --pair desk --with-status
-scripts/h2s_bridge.sh list-history --pair desk
+scripts/h2s_bridge.sh read-status --pair jeeves
+scripts/h2s_bridge.sh status-health --pair jeeves
+scripts/h2s_bridge.sh healthz --pair jeeves
+scripts/h2s_bridge.sh read-companion --pair jeeves --with-status
+scripts/h2s_bridge.sh list-history --pair jeeves
 ```
 
 Set the persistent companion mode:
 
 ```bash
-scripts/h2s_bridge.sh set-companion --pair desk --mood playful --privacy-mode normal --proactivity playful
-scripts/h2s_bridge.sh set-companion --pair desk --privacy-mode private
-scripts/h2s_bridge.sh set-companion --pair desk --privacy-mode debug
+scripts/h2s_bridge.sh set-companion --pair jeeves --mood playful --privacy-mode normal --proactivity playful
+scripts/h2s_bridge.sh set-companion --pair jeeves --privacy-mode private
+scripts/h2s_bridge.sh set-companion --pair jeeves --privacy-mode debug
 ```
 
 Show display text:
 
 ```bash
 scripts/h2s_bridge.sh send-display \
-  --pair desk \
+  --pair jeeves \
   --text "Hello from Hermes2StackChan" \
   --wait-ack
 ```
@@ -586,29 +586,29 @@ scripts/h2s_bridge.sh send-display \
 Show the sticky info mode with time, weekday, date, and a small face:
 
 ```bash
-scripts/h2s_bridge.sh send-info --pair desk --wait-ack
+scripts/h2s_bridge.sh send-info --pair jeeves --wait-ack
 ```
 
 Set a face:
 
 ```bash
-scripts/h2s_bridge.sh send-face --pair desk --emotion happy --wait-ack
-scripts/h2s_bridge.sh send-face --pair desk --emotion blink --wait-ack
-scripts/h2s_bridge.sh send-face --pair desk --emotion deep_breathe --wait-ack
+scripts/h2s_bridge.sh send-face --pair jeeves --emotion happy --wait-ack
+scripts/h2s_bridge.sh send-face --pair jeeves --emotion blink --wait-ack
+scripts/h2s_bridge.sh send-face --pair jeeves --emotion deep_breathe --wait-ack
 ```
 
 Move the head:
 
 ```bash
-scripts/h2s_bridge.sh send-move --pair desk --direction left --wait-ack
-scripts/h2s_bridge.sh send-move --pair desk --direction center --wait-ack
+scripts/h2s_bridge.sh send-move --pair jeeves --direction left --wait-ack
+scripts/h2s_bridge.sh send-move --pair jeeves --direction center --wait-ack
 ```
 
 Send a smooth path:
 
 ```bash
 scripts/h2s_bridge.sh send-motion \
-  --pair desk \
+  --pair jeeves \
   --curve spline \
   --points '[{"yaw_pct":-20,"pitch_pct":50,"duration_ms":900,"speed_pct":25},{"yaw_pct":20,"pitch_pct":50,"duration_ms":1200,"speed_pct":25},{"yaw_pct":0,"pitch_pct":45,"duration_ms":900,"speed_pct":18}]' \
   --wait-ack
@@ -617,12 +617,12 @@ scripts/h2s_bridge.sh send-motion \
 LED, device, and sound tests:
 
 ```bash
-scripts/h2s_bridge.sh send-led --pair desk --mode party --wait-ack
-scripts/h2s_bridge.sh send-device --pair desk --volume-pct 80 --brightness-pct 70 --wait-ack
-scripts/h2s_bridge.sh send-device --pair desk --display-sleep --wait-ack
-scripts/h2s_bridge.sh send-device --pair desk --display-wake --wait-ack
-scripts/h2s_bridge.sh send-system --pair desk --action shutdown --wait-ack
-scripts/h2s_bridge.sh send-sound --pair desk --frequency-hz 880 --duration-ms 140 --wait-ack
+scripts/h2s_bridge.sh send-led --pair jeeves --mode party --wait-ack
+scripts/h2s_bridge.sh send-device --pair jeeves --volume-pct 80 --brightness-pct 70 --wait-ack
+scripts/h2s_bridge.sh send-device --pair jeeves --display-sleep --wait-ack
+scripts/h2s_bridge.sh send-device --pair jeeves --display-wake --wait-ack
+scripts/h2s_bridge.sh send-system --pair jeeves --action shutdown --wait-ack
+scripts/h2s_bridge.sh send-sound --pair jeeves --frequency-hz 880 --duration-ms 140 --wait-ack
 ```
 
 `display_sleep` only turns the display/backlight off and keeps StackChan alive.
@@ -632,11 +632,11 @@ the AXP2101 PMIC, so use it only when you really want StackChan to turn off.
 Retained device settings:
 
 ```bash
-scripts/h2s_bridge.sh restore-device-settings --pair desk --wait-ack
+scripts/h2s_bridge.sh restore-device-settings --pair jeeves --wait-ack
 ```
 
 The bridge keeps the latest useful device settings on
-`hermes-stackchan/desk/state/device_settings` as a retained MQTT message.
+`hermes-stackchan/jeeves/state/device_settings` as a retained MQTT message.
 Currently this restores speaker volume and display brightness. The unified
 bridge service also watches StackChan status and reapplies these settings after
 a reboot or reconnect.
@@ -644,7 +644,7 @@ a reboot or reconnect.
 Sensor reactions:
 
 ```bash
-scripts/h2s_bridge.sh watch-sensors --pair desk --verbose
+scripts/h2s_bridge.sh watch-sensors --pair jeeves --verbose
 ```
 
 The unified bridge service runs this by default. It watches retained status plus
@@ -667,7 +667,7 @@ Ask Hermes and publish returned actions:
 
 ```bash
 scripts/h2s_bridge.sh ask-hermes \
-  --pair desk \
+  --pair jeeves \
   --text "Sag kurz Hallo und lächle." \
   --show-response
 ```
@@ -721,9 +721,9 @@ true`.
 Reminder CLI:
 
 ```bash
-scripts/h2s_bridge.sh add-reminder --pair desk --text "Test" --delay-s 120
-scripts/h2s_bridge.sh list-reminders --pair desk
-scripts/h2s_bridge.sh watch-reminders --pair desk
+scripts/h2s_bridge.sh add-reminder --pair jeeves --text "Test" --delay-s 120
+scripts/h2s_bridge.sh list-reminders --pair jeeves
+scripts/h2s_bridge.sh watch-reminders --pair jeeves
 ```
 
 ## 8: Test Speech End To End
@@ -731,7 +731,7 @@ scripts/h2s_bridge.sh watch-reminders --pair desk
 Start the unified bridge service or run locally:
 
 ```bash
-scripts/h2s_bridge.sh run --pair desk --touch-verbose
+scripts/h2s_bridge.sh run --pair jeeves --touch-verbose
 ```
 
 Then use StackChan:
@@ -769,7 +769,7 @@ journalctl -u hermes2stackchan.service -f
 MQTT traffic:
 
 ```bash
-mosquitto_sub -h 127.0.0.1 -t 'hermes-stackchan/desk/#' -v
+mosquitto_sub -h 127.0.0.1 -t 'hermes-stackchan/jeeves/#' -v
 ```
 
 Serial monitor:

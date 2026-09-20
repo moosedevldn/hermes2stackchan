@@ -17,8 +17,8 @@ This is the reproducible V1.0 integration path for one Hermes and one StackChan.
 3. StackChan posts WAV audio to `POST /stackchan/audio`.
 4. Bridge transcribes audio through the configured STT provider.
 5. Bridge handles simple one-step commands locally when possible.
-6. For status-dependent local commands, Bridge reads retained MQTT status from `hermes-stackchan/desk/status`.
-7. For conversation, combined tasks, and complex requests, Bridge sends transcript, status, personality, and `capabilities/bridge-capabilities-desk.md` to Hermes.
+6. For status-dependent local commands, Bridge reads retained MQTT status from `hermes-stackchan/jeeves/status`.
+7. For conversation, combined tasks, and complex requests, Bridge sends transcript, status, personality, and `capabilities/bridge-capabilities-jeeves.md` to Hermes.
 8. Hermes returns JSON only:
 
 ```json
@@ -66,11 +66,11 @@ Publishing MQTT display text alone will not produce spoken audio.
 ## Required `.env`
 
 ```env
-H2S_PAIR_ID=desk
-H2S_HERMES_ID=hermes-desk
-H2S_STACKCHAN_ID=stackchan-desk
-H2S_CAPABILITIES_FILE=capabilities/bridge-capabilities-desk.md
-H2S_PERSONALITY_FILE=personalities/hermes-desk.md
+H2S_PAIR_ID=jeeves
+H2S_HERMES_ID=hermes-jeeves
+H2S_STACKCHAN_ID=stackchan-jeeves
+H2S_CAPABILITIES_FILE=capabilities/bridge-capabilities-jeeves.md
+H2S_PERSONALITY_FILE=personalities/hermes-jeeves.md
 
 H2S_MQTT_HOST=127.0.0.1
 H2S_MQTT_PORT=1883
@@ -109,7 +109,7 @@ scripts/h2s_bridge.sh ask-hermes --text "Sag kurz hallo und schaue freundlich."
 Run the unified bridge:
 
 ```bash
-scripts/h2s_bridge.sh run --pair desk
+scripts/h2s_bridge.sh run --pair jeeves
 ```
 
 Watch logs:
@@ -136,7 +136,7 @@ The installer copies the project to `/opt/hermes2stackchan`, creates a virtual e
 Hermes learns the interface from:
 
 ```text
-capabilities/bridge-capabilities-desk.md
+capabilities/bridge-capabilities-jeeves.md
 ```
 
 Keep that file current whenever a firmware or bridge command changes. The bridge still validates every Hermes action before publishing it to MQTT, so Hermes may ask, but the bridge and firmware decide what is safe to execute.

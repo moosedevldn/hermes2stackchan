@@ -4,20 +4,20 @@ This is the first Hermes2StackChan V1.0 hardware slice: the bridge sends MQTT co
 
 ## Topics
 
-- Command: `hermes-stackchan/desk/cmd/display`
-- System command: `hermes-stackchan/desk/cmd/system`
-- Face command: `hermes-stackchan/desk/cmd/face`
-- Move command: `hermes-stackchan/desk/cmd/move`
-- Motion command: `hermes-stackchan/desk/cmd/motion`
-- Sound command: `hermes-stackchan/desk/cmd/sound`
-- Audio command: `hermes-stackchan/desk/cmd/audio`
-- LED command: `hermes-stackchan/desk/cmd/led`
-- Device command: `hermes-stackchan/desk/cmd/device`
-- Legacy say command: `hermes-stackchan/desk/cmd/say` exists in older firmware, but the bridge maps `say` to `display` and does not send beeps for normal Hermes replies.
-- Status: `hermes-stackchan/desk/status`
-- ACK: `hermes-stackchan/desk/ack`
-- Error: `hermes-stackchan/desk/error`
-- Events: `hermes-stackchan/desk/events`
+- Command: `hermes-stackchan/jeeves/cmd/display`
+- System command: `hermes-stackchan/jeeves/cmd/system`
+- Face command: `hermes-stackchan/jeeves/cmd/face`
+- Move command: `hermes-stackchan/jeeves/cmd/move`
+- Motion command: `hermes-stackchan/jeeves/cmd/motion`
+- Sound command: `hermes-stackchan/jeeves/cmd/sound`
+- Audio command: `hermes-stackchan/jeeves/cmd/audio`
+- LED command: `hermes-stackchan/jeeves/cmd/led`
+- Device command: `hermes-stackchan/jeeves/cmd/device`
+- Legacy say command: `hermes-stackchan/jeeves/cmd/say` exists in older firmware, but the bridge maps `say` to `display` and does not send beeps for normal Hermes replies.
+- Status: `hermes-stackchan/jeeves/status`
+- ACK: `hermes-stackchan/jeeves/ack`
+- Error: `hermes-stackchan/jeeves/error`
+- Events: `hermes-stackchan/jeeves/events`
 
 ## Bridge Setup
 
@@ -52,17 +52,17 @@ Install the bridge dependency:
 python3 -m pip install -e .
 ```
 
-Watch all messages for the `desk` pair:
+Watch all messages for the `jeeves` pair:
 
 ```sh
-scripts/h2s_bridge.sh watch --pair desk
+scripts/h2s_bridge.sh watch --pair jeeves
 ```
 
 Send the first display command:
 
 ```sh
 scripts/h2s_bridge.sh send-display \
-  --pair desk \
+  --pair jeeves \
   --text "Hello from Hermes2StackChan" \
   --request-id test-001 \
   --wait-ack
@@ -71,16 +71,16 @@ scripts/h2s_bridge.sh send-display \
 Try hardware commands:
 
 ```sh
-scripts/h2s_bridge.sh read-status --pair desk
-scripts/h2s_bridge.sh status-health --pair desk
-scripts/h2s_bridge.sh send-face --pair desk --emotion happy --wait-ack
-scripts/h2s_bridge.sh send-move --pair desk --direction left --wait-ack
-scripts/h2s_bridge.sh send-move --pair desk --direction center --wait-ack
-scripts/h2s_bridge.sh send-motion --pair desk --profile circle --curve spline --speed-pct 35 --steps 40 --wait-ack
-scripts/h2s_bridge.sh send-motion --pair desk --curve linear --points '[[0,0,0,25],[0,28,0,25],[0,-18,0,25],[0,0,0,25]]' --wait-ack
-scripts/h2s_bridge.sh send-led --pair desk --mode party --wait-ack
-scripts/h2s_bridge.sh send-device --pair desk --volume-pct 80 --brightness-pct 70 --wait-ack
-scripts/h2s_bridge.sh send-sound --pair desk --frequency-hz 880 --duration-ms 140 --wait-ack
+scripts/h2s_bridge.sh read-status --pair jeeves
+scripts/h2s_bridge.sh status-health --pair jeeves
+scripts/h2s_bridge.sh send-face --pair jeeves --emotion happy --wait-ack
+scripts/h2s_bridge.sh send-move --pair jeeves --direction left --wait-ack
+scripts/h2s_bridge.sh send-move --pair jeeves --direction center --wait-ack
+scripts/h2s_bridge.sh send-motion --pair jeeves --profile circle --curve spline --speed-pct 35 --steps 40 --wait-ack
+scripts/h2s_bridge.sh send-motion --pair jeeves --curve linear --points '[[0,0,0,25],[0,28,0,25],[0,-18,0,25],[0,0,0,25]]' --wait-ack
+scripts/h2s_bridge.sh send-led --pair jeeves --mode party --wait-ack
+scripts/h2s_bridge.sh send-device --pair jeeves --volume-pct 80 --brightness-pct 70 --wait-ack
+scripts/h2s_bridge.sh send-sound --pair jeeves --frequency-hz 880 --duration-ms 140 --wait-ack
 ```
 
 `send-motion --profile ...` is only a bridge-side test helper. The MQTT payload sent to StackChan always contains concrete `points`; the firmware does not keep named motion profiles. For Hermes integration, let Hermes compute the waypoint sequence and publish `points` directly.
@@ -88,15 +88,15 @@ scripts/h2s_bridge.sh send-sound --pair desk --frequency-hz 880 --duration-ms 14
 React to USB/battery power changes:
 
 ```sh
-scripts/h2s_bridge.sh watch-power --pair desk
+scripts/h2s_bridge.sh watch-power --pair jeeves
 ```
 
-`watch-power` listens to `hermes-stackchan/desk/status`. When the AXP2101 reports a transition from battery to external power or back, the bridge displays the battery percentage and charge state for about five seconds and starts the matching head motion immediately. After the overlay, it switches to the matching face: external power becomes happy; unplugging becomes neutral. It does not change LEDs or sound, so Hermes can keep using those channels.
+`watch-power` listens to `hermes-stackchan/jeeves/status`. When the AXP2101 reports a transition from battery to external power or back, the bridge displays the battery percentage and charge state for about five seconds and starts the matching head motion immediately. After the overlay, it switches to the matching face: external power becomes happy; unplugging becomes neutral. It does not change LEDs or sound, so Hermes can keep using those channels.
 
 React to physical sensor interaction:
 
 ```sh
-scripts/h2s_bridge.sh watch-sensors --pair desk --verbose
+scripts/h2s_bridge.sh watch-sensors --pair jeeves --verbose
 ```
 
 `watch-sensors` listens to retained `status` and `events`. It uses the BMI270 IMU
@@ -110,7 +110,7 @@ The watcher does not change LEDs or play sounds.
 For normal local use, start it as a background process:
 
 ```sh
-scripts/start_power_watcher.sh desk
+scripts/start_power_watcher.sh jeeves
 scripts/status_power_watcher.sh
 scripts/stop_power_watcher.sh
 ```
@@ -118,12 +118,12 @@ scripts/stop_power_watcher.sh
 Run the idle life animator:
 
 ```sh
-scripts/start_life_animator.sh desk
-scripts/status_life_animator.sh desk
-scripts/stop_life_animator.sh desk
+scripts/start_life_animator.sh jeeves
+scripts/status_life_animator.sh jeeves
+scripts/stop_life_animator.sh jeeves
 ```
 
-`animate-life` only sends small face and mostly subtle head impulses while the retained status reports `ui.mode: face`, the display is awake, and StackChan is not recording or speaking. The firmware renders blink, normal breathing, occasional deep breathing, tiny `Z` micro-sleeps, small mouth impulses, and pupil-glance impulses as short smooth frame animations and returns to the current default face. Sometimes StackChan first glances with the pupils, then gently turns the head in that direction, and finally centers the pupils again. Upward glances are slightly favored so he does not feel stuck looking down. Rarely, StackChan performs a bigger desk-scan sweep left/right, a cautious up/down scan, or a diagonal room glance and returns to center; the Bridge sends matching pupil glances for each sweep segment so the eyes track the head direction. Firmware also glances in the detected movement direction for direct `move` and `motion` commands. Servo life motions are bounded and can be disabled with `--no-motion`. It never sends LED or sound commands.
+`animate-life` only sends small face and mostly subtle head impulses while the retained status reports `ui.mode: face`, the display is awake, and StackChan is not recording or speaking. The firmware renders blink, normal breathing, occasional deep breathing, tiny `Z` micro-sleeps, small mouth impulses, and pupil-glance impulses as short smooth frame animations and returns to the current default face. Sometimes StackChan first glances with the pupils, then gently turns the head in that direction, and finally centers the pupils again. Upward glances are slightly favored so he does not feel stuck looking down. Rarely, StackChan performs a bigger jeeves-scan sweep left/right, a cautious up/down scan, or a diagonal room glance and returns to center; the Bridge sends matching pupil glances for each sweep segment so the eyes track the head direction. Firmware also glances in the detected movement direction for direct `move` and `motion` commands. Servo life motions are bounded and can be disabled with `--no-motion`. It never sends LED or sound commands.
 
 ## Audio Control Slice
 
@@ -133,7 +133,7 @@ Enable the configured wakeword:
 
 ```sh
 scripts/h2s_bridge.sh send-audio \
-  --pair desk \
+  --pair jeeves \
   --action set_wakeword \
   --wakeword Computer \
   --enabled \
@@ -144,7 +144,7 @@ Simulate a wakeword trigger and let the firmware auto-stop when speech has been 
 
 ```sh
 scripts/h2s_bridge.sh send-audio \
-  --pair desk \
+  --pair jeeves \
   --action simulate_wakeword \
   --wakeword Computer \
   --silence-timeout-ms 500 \
@@ -154,18 +154,18 @@ scripts/h2s_bridge.sh send-audio \
 Start and stop recording manually:
 
 ```sh
-scripts/h2s_bridge.sh send-audio --pair desk --action start_recording --source push_to_talk --wait-ack
-scripts/h2s_bridge.sh send-audio --pair desk --action stop_recording --source push_to_talk --reason manual_stop --wait-ack
+scripts/h2s_bridge.sh send-audio --pair jeeves --action start_recording --source push_to_talk --wait-ack
+scripts/h2s_bridge.sh send-audio --pair jeeves --action stop_recording --source push_to_talk --reason manual_stop --wait-ack
 ```
 
-The retained status includes top-level `wakeword_enabled` and `recording`, plus an `audio` object with `input_ready`, `wakeword`, `recording_source`, timing fields, `voice_active`, `voice_level_pct`, `voice_avg_level`, and `voice_peak_level`. The firmware also publishes realtime state changes to `hermes-stackchan/desk/events`, for example `wakeword_detected`, `recording_started`, and `recording_stopped`.
+The retained status includes top-level `wakeword_enabled` and `recording`, plus an `audio` object with `input_ready`, `wakeword`, `recording_source`, timing fields, `voice_active`, `voice_level_pct`, `voice_avg_level`, and `voice_peak_level`. The firmware also publishes realtime state changes to `hermes-stackchan/jeeves/events`, for example `wakeword_detected`, `recording_started`, and `recording_stopped`.
 
 While recording, the face remains visible and the face renderer adds a small waveform overlay below the mouth from the same framebuffer before the frame is flushed. The overlay is the first `FaceExtraMode`; later extras can use the same hook without replacing the face screen.
 
 For a quick head-touch hardware test, run the bridge touch lamp watcher:
 
 ```sh
-scripts/h2s_bridge.sh watch-touch-lamp --pair desk
+scripts/h2s_bridge.sh watch-touch-lamp --pair jeeves
 ```
 
 StackChan publishes `touch_down` and `touch_up` events from the SI12T head-touch sensor. A touch starts recording immediately in firmware. Releasing touch does not stop recording; recording stops when the microphone has heard speech and then sees about 500 ms of silence, or after a no-voice timeout. A touch turns the LEDs solid green immediately through the bridge watcher. They stay green while recording is active and turn off about 500 ms after `recording_stopped` or a retained status update reports `recording:false` after an active recording. This is intentionally bridge-driven so the MQTT event path is visible. The watcher logs the bridge-side publish timing in verbose mode.
@@ -213,7 +213,7 @@ Ask Hermes and publish the resulting StackChan actions:
 
 ```sh
 scripts/h2s_bridge.sh ask-hermes \
-  --pair desk \
+  --pair jeeves \
   --text "Sag kurz Hallo und lächle." \
   --show-response
 ```
@@ -241,8 +241,8 @@ These `.env` values are used for firmware:
 - `H2S_WIFI_SSID`
 - `H2S_WIFI_PASSWORD`
 - `H2S_MQTT_URI`, for example `mqtt://192.168.99.58:1883`
-- `H2S_PAIR_ID`, default `desk`
-- `H2S_STACKCHAN_ID`, default `stackchan-desk`
+- `H2S_PAIR_ID`, default `jeeves`
+- `H2S_STACKCHAN_ID`, default `stackchan-jeeves`
 
 The firmware stops on a visible `SET WIFI CONFIG` or `SET MQTT URI` screen when those local values are empty or were not synced.
 

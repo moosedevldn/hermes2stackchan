@@ -95,17 +95,17 @@ class BridgeConfigTests(unittest.TestCase):
         self.assertEqual(config.mqtt.host, "localhost")
         self.assertEqual(config.hermes.base_url, "http://127.0.0.1:8642")
         self.assertEqual(config.companion.history_keep, 200)
-        self.assertIn("desk", config.pairs)
-        self.assertEqual(config.pairs["desk"].display_topic, "hermes-stackchan/desk/cmd/display")
-        self.assertEqual(config.pairs["desk"].move_topic, "hermes-stackchan/desk/cmd/move")
-        self.assertEqual(config.pairs["desk"].motion_topic, "hermes-stackchan/desk/cmd/motion")
-        self.assertEqual(config.pairs["desk"].device_topic, "hermes-stackchan/desk/cmd/device")
-        self.assertEqual(config.pairs["desk"].audio_topic, "hermes-stackchan/desk/cmd/audio")
-        self.assertEqual(config.pairs["desk"].events_topic, "hermes-stackchan/desk/events")
-        self.assertEqual(config.pairs["desk"].mood_default, "playful")
-        self.assertEqual(config.pairs["desk"].privacy_mode, "normal")
-        self.assertEqual(config.pairs["desk"].proactivity, "playful")
-        self.assertEqual(config.pairs["desk"].wakeword, "Computer")
+        self.assertIn("jeeves", config.pairs)
+        self.assertEqual(config.pairs["jeeves"].display_topic, "hermes-stackchan/jeeves/cmd/display")
+        self.assertEqual(config.pairs["jeeves"].move_topic, "hermes-stackchan/jeeves/cmd/move")
+        self.assertEqual(config.pairs["jeeves"].motion_topic, "hermes-stackchan/jeeves/cmd/motion")
+        self.assertEqual(config.pairs["jeeves"].device_topic, "hermes-stackchan/jeeves/cmd/device")
+        self.assertEqual(config.pairs["jeeves"].audio_topic, "hermes-stackchan/jeeves/cmd/audio")
+        self.assertEqual(config.pairs["jeeves"].events_topic, "hermes-stackchan/jeeves/events")
+        self.assertEqual(config.pairs["jeeves"].mood_default, "calm")
+        self.assertEqual(config.pairs["jeeves"].privacy_mode, "normal")
+        self.assertEqual(config.pairs["jeeves"].proactivity, "balanced")
+        self.assertEqual(config.pairs["jeeves"].wakeword, "Jeeves")
 
     def test_pair_profile_env_overrides(self) -> None:
         config = load_config(
@@ -119,7 +119,7 @@ class BridgeConfigTests(unittest.TestCase):
                 "H2S_PAIR_VOICE": "de-DE-ConradNeural",
             },
         )
-        pair = config.pairs["desk"]
+        pair = config.pairs["jeeves"]
 
         self.assertEqual(pair.privacy_mode, "private")
         self.assertEqual(pair.mood_default, "focused")
@@ -146,13 +146,13 @@ class BridgeConfigTests(unittest.TestCase):
                 env_path=None,
                 environ={"H2S_COMPANION_STATE_STORE": str(Path(tmp) / "state.json")},
             )
-            pair = config.pairs["desk"]
+            pair = config.pairs["jeeves"]
             status = {"battery_pct": 82, "external_power": True, "ui": {"mode": "face"}, "face": {"emotion": "friendly"}}
             context = build_hermes_context_package(config, pair, status)
 
-        self.assertEqual(context["pair"]["pair_id"], "desk")
-        self.assertEqual(context["pair"]["wakeword"], "Computer")
-        self.assertEqual(context["mood"]["state"], "playful")
+        self.assertEqual(context["pair"]["pair_id"], "jeeves")
+        self.assertEqual(context["pair"]["wakeword"], "Jeeves")
+        self.assertEqual(context["mood"]["state"], "calm")
         self.assertEqual(context["privacy"]["mode"], "normal")
         self.assertIn("time_date_weekday_calendar_week", context["local_capabilities"])
         self.assertEqual(context["status_summary"]["battery_pct"], 82)
@@ -164,7 +164,7 @@ class BridgeConfigTests(unittest.TestCase):
                 env_path=None,
                 environ={"H2S_COMPANION_STATE_STORE": str(Path(tmp) / "state.json")},
             )
-            pair = config.pairs["desk"]
+            pair = config.pairs["jeeves"]
             context = build_hermes_context_package(config, pair, {"battery_pct": 88})
 
             messages = build_hermes_messages(pair, "", "", {"battery_pct": 88}, "Hallo", context)
@@ -177,7 +177,7 @@ class BridgeConfigTests(unittest.TestCase):
 
     def test_action_queue_priority_classifies_sources(self) -> None:
         config = load_config(Path("config/pairs.example.json"), env_path=None, environ={})
-        pair = config.pairs["desk"]
+        pair = config.pairs["jeeves"]
 
         safety = action_queue_record(pair, pair.system_topic, {"action": "shutdown", "request_id": "cmd-1"}, "queued")
         idle = action_queue_record(pair, pair.face_topic, {"emotion": "soft_blink", "request_id": "life-1"}, "queued")
@@ -194,7 +194,7 @@ class BridgeConfigTests(unittest.TestCase):
                 env_path=None,
                 environ={"H2S_COMPANION_STATE_STORE": str(Path(tmp) / "state.json")},
             )
-            pair = config.pairs["desk"]
+            pair = config.pairs["jeeves"]
             payload = build_bridge_healthz(config, pair, include_status=False)
 
         self.assertEqual(payload["service"], "hermes2stackchan-bridge")
@@ -212,7 +212,7 @@ class BridgeConfigTests(unittest.TestCase):
                     "H2S_INTERACTION_HISTORY_STORE": str(Path(tmp) / "history.jsonl"),
                 },
             )
-            pair = config.pairs["desk"]
+            pair = config.pairs["jeeves"]
             record_interaction_event(
                 config,
                 pair,
@@ -229,10 +229,10 @@ class BridgeConfigTests(unittest.TestCase):
             "mqtt": {"host": "localhost"},
             "pairs": [
                 {
-                    "pair_id": "desk",
-                    "hermes_id": "hermes-desk",
-                    "stackchan_id": "stackchan-desk",
-                    "mqtt_prefix": "wrong/desk",
+                    "pair_id": "jeeves",
+                    "hermes_id": "hermes-jeeves",
+                    "stackchan_id": "stackchan-jeeves",
+                    "mqtt_prefix": "wrong/jeeves",
                 }
             ],
         }
@@ -308,7 +308,7 @@ class BridgeConfigTests(unittest.TestCase):
 
     def test_parse_env_file(self) -> None:
         with tempfile.NamedTemporaryFile("w", suffix=".env", delete=False) as handle:
-            handle.write("# comment\nexport H2S_MQTT_HOST=\"mqtt.local\"\nH2S_PAIR_ID='desk'\n")
+            handle.write("# comment\nexport H2S_MQTT_HOST=\"mqtt.local\"\nH2S_PAIR_ID='jeeves'\n")
             path = Path(handle.name)
 
         try:
@@ -317,7 +317,7 @@ class BridgeConfigTests(unittest.TestCase):
             path.unlink(missing_ok=True)
 
         self.assertEqual(parsed["H2S_MQTT_HOST"], "mqtt.local")
-        self.assertEqual(parsed["H2S_PAIR_ID"], "desk")
+        self.assertEqual(parsed["H2S_PAIR_ID"], "jeeves")
 
     def test_display_payload(self) -> None:
         payload = build_display_payload("Hallo StackChan", 5000, "test-001")
@@ -340,7 +340,7 @@ class BridgeConfigTests(unittest.TestCase):
         self.assertEqual(payload["request_id"], "info-001")
 
     def test_info_action_targets_display_topic(self) -> None:
-        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["desk"]
+        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["jeeves"]
 
         topic, payload = action_to_topic_payload(pair, {"action": "info"}, "info-002")
 
@@ -354,7 +354,7 @@ class BridgeConfigTests(unittest.TestCase):
     def test_display_image_action_targets_display_topic(self) -> None:
         config = load_config(Path("config/pairs.example.json"), env_path=None, environ={})
         topic, payload = action_to_topic_payload(
-            config.pairs["desk"],
+            config.pairs["jeeves"],
             {
                 "action": "display_image",
                 "url": "http://127.0.0.1:8788/stackchan/images/test.jpg",
@@ -363,7 +363,7 @@ class BridgeConfigTests(unittest.TestCase):
             "img-1",
         )
 
-        self.assertEqual(topic, "hermes-stackchan/desk/cmd/display")
+        self.assertEqual(topic, "hermes-stackchan/jeeves/cmd/display")
         self.assertEqual(payload["mode"], "image")
         self.assertEqual(payload["format"], "jpeg")
         self.assertEqual(payload["width"], 320)
@@ -388,7 +388,7 @@ class BridgeConfigTests(unittest.TestCase):
 
     def test_idle_sleep_ignores_life_and_its_own_commands(self) -> None:
         config = load_config(Path("config/pairs.example.json"), env_path=None, environ={})
-        pair = config.pairs["desk"]
+        pair = config.pairs["jeeves"]
 
         self.assertFalse(request_id_counts_as_idle_activity("life-123"))
         self.assertFalse(request_id_counts_as_idle_activity("idle-sleep-123"))
@@ -411,7 +411,7 @@ class BridgeConfigTests(unittest.TestCase):
     def test_hermes_vision_messages_include_data_url(self) -> None:
         config = load_config(Path("config/pairs.example.json"), env_path=None, environ={})
         messages = build_hermes_vision_messages(
-            config.pairs["desk"],
+            config.pairs["jeeves"],
             "",
             "",
             {},
@@ -522,7 +522,7 @@ class BridgeConfigTests(unittest.TestCase):
 
     def test_hermes_prompt_forbids_say_for_normal_replies(self) -> None:
         config = load_config(Path("config/pairs.example.json"), env_path=None, environ={})
-        pair = config.pairs["desk"]
+        pair = config.pairs["jeeves"]
 
         messages = build_hermes_messages(pair, "", "", {}, "Sag hallo.")
         system_text = messages[0]["content"]
@@ -547,7 +547,7 @@ class BridgeConfigTests(unittest.TestCase):
         self.assertEqual(external_reply_actions(actions, "Hallo Wolfgang.", tts_enabled=False), actions)
 
     def test_say_action_is_mapped_to_display_without_beep(self) -> None:
-        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["desk"]
+        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["jeeves"]
 
         topic, payload = action_to_topic_payload(
             pair,
@@ -561,7 +561,7 @@ class BridgeConfigTests(unittest.TestCase):
         self.assertNotIn("beep", payload)
 
     def test_display_payload_is_hard_clamped_for_stackchan(self) -> None:
-        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["desk"]
+        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["jeeves"]
         long_text = "Wort " * 200
 
         _topic, payload = action_to_topic_payload(pair, {"action": "display", "text": long_text}, "display-001")
@@ -604,7 +604,7 @@ class BridgeConfigTests(unittest.TestCase):
         self.assertLess(waiting_animation_delay_s(1), 1.0)
 
     def test_mqtt_settle_delay_spaces_text_before_followup_actions(self) -> None:
-        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["desk"]
+        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["jeeves"]
 
         self.assertGreater(
             mqtt_settle_delay_after_publish_s(pair.say_topic, {"text": "Hallo von Hermes."}, pair),
@@ -630,7 +630,7 @@ class BridgeConfigTests(unittest.TestCase):
 
     def test_hermes_action_to_topic_payload(self) -> None:
         config = load_config(Path("config/pairs.example.json"), env_path=None, environ={})
-        pair = config.pairs["desk"]
+        pair = config.pairs["jeeves"]
 
         topic, payload = action_to_topic_payload(
             pair,
@@ -638,14 +638,14 @@ class BridgeConfigTests(unittest.TestCase):
             "req-001",
         )
 
-        self.assertEqual(topic, "hermes-stackchan/desk/cmd/move")
+        self.assertEqual(topic, "hermes-stackchan/jeeves/cmd/move")
         self.assertEqual(payload["request_id"], "req-001")
         self.assertEqual(payload["yaw_target_pct"], 25)
         self.assertEqual(payload["pitch_target_pct"], 0)
 
     def test_system_sleep_wake_shutdown_actions_to_topic_payload(self) -> None:
         config = load_config(Path("config/pairs.example.json"), env_path=None, environ={})
-        pair = config.pairs["desk"]
+        pair = config.pairs["jeeves"]
 
         for action_name in ("display_sleep", "display_wake", "shutdown", "power_off"):
             topic, payload = action_to_topic_payload(
@@ -653,7 +653,7 @@ class BridgeConfigTests(unittest.TestCase):
                 {"action": "system", "system_action": action_name},
                 f"system-{action_name}",
             )
-            self.assertEqual(topic, "hermes-stackchan/desk/cmd/system")
+            self.assertEqual(topic, "hermes-stackchan/jeeves/cmd/system")
             self.assertEqual(payload["request_id"], f"system-{action_name}")
             self.assertEqual(payload["action"], action_name)
 
@@ -779,7 +779,7 @@ class BridgeConfigTests(unittest.TestCase):
 
     def test_publish_action_messages_skips_when_stackchan_offline(self) -> None:
         config = load_config(Path("config/pairs.example.json"), env_path=None, environ={})
-        pair = config.pairs["desk"]
+        pair = config.pairs["jeeves"]
         published: list[tuple[str, str]] = []
 
         class FakeClient:
@@ -889,8 +889,8 @@ class BridgeConfigTests(unittest.TestCase):
     def test_status_health_required_paths(self) -> None:
         status = {
             "schema_version": "1.0",
-            "pair_id": "desk",
-            "stackchan_id": "stackchan-desk",
+            "pair_id": "jeeves",
+            "stackchan_id": "stackchan-jeeves",
             "uptime_ms": 1234,
             "firmware": "1.0.0-mqtt-hardware",
             "firmware_version": "1.0.0-mqtt-hardware",
@@ -949,7 +949,7 @@ class BridgeConfigTests(unittest.TestCase):
         self.assertEqual(missing_status_paths(status), ["firmware"])
 
     def test_device_settings_snapshot_extracts_safe_settings(self) -> None:
-        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["desk"]
+        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["jeeves"]
 
         snapshot = build_device_settings_snapshot(
             pair,
@@ -957,8 +957,8 @@ class BridgeConfigTests(unittest.TestCase):
             "test",
         )
 
-        self.assertEqual(snapshot["pair_id"], "desk")
-        self.assertEqual(snapshot["stackchan_id"], "stackchan-desk")
+        self.assertEqual(snapshot["pair_id"], "jeeves")
+        self.assertEqual(snapshot["stackchan_id"], "jeevesrobot")
         self.assertEqual(snapshot["volume_pct"], 100)
         self.assertEqual(snapshot["brightness_pct"], 0)
         self.assertNotIn("display_sleeping", snapshot)
@@ -1172,7 +1172,7 @@ class BridgeConfigTests(unittest.TestCase):
             self.assertEqual(reasons, [])
 
     def test_audio_action_to_topic_payload_start_recording(self) -> None:
-        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["desk"]
+        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["jeeves"]
 
         topic, payload = action_to_topic_payload(
             pair,
@@ -1186,14 +1186,14 @@ class BridgeConfigTests(unittest.TestCase):
             "audio-001",
         )
 
-        self.assertEqual(topic, "hermes-stackchan/desk/cmd/audio")
+        self.assertEqual(topic, "hermes-stackchan/jeeves/cmd/audio")
         self.assertEqual(payload["action"], "start_recording")
         self.assertEqual(payload["source"], "push_to_talk")
         self.assertEqual(payload["request_id"], "audio-001")
         self.assertEqual(payload["min_ms"], 5000)
 
     def test_audio_action_to_topic_payload_play_tts_url(self) -> None:
-        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["desk"]
+        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["jeeves"]
 
         topic, payload = action_to_topic_payload(
             pair,
@@ -1201,12 +1201,12 @@ class BridgeConfigTests(unittest.TestCase):
             "tts-001",
         )
 
-        self.assertEqual(topic, "hermes-stackchan/desk/cmd/audio")
+        self.assertEqual(topic, "hermes-stackchan/jeeves/cmd/audio")
         self.assertEqual(payload["action"], "play_tts_url")
         self.assertEqual(payload["url"], "http://example.test/tts.wav")
 
     def test_sound_action_to_topic_payload_supports_safe_patterns(self) -> None:
-        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["desk"]
+        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["jeeves"]
 
         topic, payload = action_to_topic_payload(
             pair,
@@ -1214,7 +1214,7 @@ class BridgeConfigTests(unittest.TestCase):
             "sound-001",
         )
 
-        self.assertEqual(topic, "hermes-stackchan/desk/cmd/sound")
+        self.assertEqual(topic, "hermes-stackchan/jeeves/cmd/sound")
         self.assertEqual(payload["pattern"], "question")
         self.assertEqual(payload["frequency_hz"], 880)
         self.assertEqual(payload["duration_ms"], 140)
@@ -1228,7 +1228,7 @@ class BridgeConfigTests(unittest.TestCase):
                 env_path=None,
                 environ={"H2S_REMINDER_STORE": str(Path(tmpdir) / "reminders.json")},
             )
-            pair = config.pairs["desk"]
+            pair = config.pairs["jeeves"]
             reminder = build_reminder(
                 {"action": "reminder", "text": "Test trinken", "delay_s": 2},
                 pair,
@@ -1238,11 +1238,11 @@ class BridgeConfigTests(unittest.TestCase):
             self.assertEqual(reminder["due_ts"], 1002)
 
             add_reminder(config, reminder)
-            self.assertEqual(len(pending_reminders(config, "desk")), 1)
+            self.assertEqual(len(pending_reminders(config, "jeeves")), 1)
             self.assertEqual(due_reminders(config, pair, now_ts=1001), [])
             fired = due_reminders(config, pair, now_ts=1003)
             self.assertEqual(fired[0]["text"], "Test trinken")
-            self.assertEqual(pending_reminders(config, "desk"), [])
+            self.assertEqual(pending_reminders(config, "jeeves"), [])
 
     def test_reminder_actions_wake_display_without_audio_path(self) -> None:
         actions = reminder_actions({"id": "rem-1", "text": "Wasser trinken"}, 7000)
@@ -1259,7 +1259,7 @@ class BridgeConfigTests(unittest.TestCase):
                 env_path=None,
                 environ={"H2S_REMINDER_STORE": str(Path(tmpdir) / "reminders.json")},
             )
-            pair = config.pairs["desk"]
+            pair = config.pairs["jeeves"]
             dispatch, scheduled, errors = schedule_reminders_from_actions(
                 config,
                 pair,
@@ -1275,7 +1275,7 @@ class BridgeConfigTests(unittest.TestCase):
             self.assertEqual(scheduled[0]["text"], "Kaffee")
 
     def test_audio_action_to_topic_payload_set_wakeword(self) -> None:
-        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["desk"]
+        pair = load_config(Path("config/pairs.example.json"), env_path=None, environ={}).pairs["jeeves"]
 
         topic, payload = action_to_topic_payload(
             pair,
@@ -1283,7 +1283,7 @@ class BridgeConfigTests(unittest.TestCase):
             "wake-001",
         )
 
-        self.assertEqual(topic, "hermes-stackchan/desk/cmd/audio")
+        self.assertEqual(topic, "hermes-stackchan/jeeves/cmd/audio")
         self.assertEqual(payload["action"], "set_wakeword")
         self.assertEqual(payload["wakeword"], "Computer")
         self.assertTrue(payload["enabled"])

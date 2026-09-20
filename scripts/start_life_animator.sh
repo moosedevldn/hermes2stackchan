@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PAIR_ID="${1:-desk}"
+PAIR_ID="${1:-jeeves}"
 LOG_FILE="$ROOT_DIR/life-animator.log"
 LABEL="de.wollux.hermes2stackchan.life-animator.$PAIR_ID"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"

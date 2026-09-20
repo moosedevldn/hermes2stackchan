@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=simple
 WorkingDirectory=/opt/hermes2stackchan
 EnvironmentFile=/opt/hermes2stackchan/.env
-ExecStart=/opt/hermes2stackchan/.venv/bin/h2s-bridge --config /opt/hermes2stackchan/config/pairs.example.json --env /opt/hermes2stackchan/.env run --pair desk
+ExecStart=/opt/hermes2stackchan/.venv/bin/h2s-bridge --config /opt/hermes2stackchan/config/pairs.example.json --env /opt/hermes2stackchan/.env run --pair jeeves
 Restart=always
 RestartSec=3
 

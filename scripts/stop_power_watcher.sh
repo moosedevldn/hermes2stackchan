@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PAIR_ID="${1:-desk}"
+PAIR_ID="${1:-jeeves}"
 PID_FILE="$ROOT_DIR/power-watcher.pid"
 LABEL="de.wollux.hermes2stackchan.power-watcher.$PAIR_ID"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
