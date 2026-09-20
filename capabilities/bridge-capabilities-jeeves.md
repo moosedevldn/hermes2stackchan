@@ -1,4 +1,4 @@
-# Bridge Capabilities - hermes-jeeves / stackchan-jeeves
+# Bridge Capabilities - hermes-jeeves / jeevesrobot
 
 ## V1.0 MQTT Hardware Slice
 
@@ -7,7 +7,7 @@ This public slice supports direct MQTT hardware control. Hermes may request acti
 ## Pair
 
 - Hermes ID: `hermes-jeeves`
-- StackChan ID: `stackchan-jeeves`
+- StackChan ID: `jeevesrobot`
 - Pair ID: `jeeves`
 - MQTT prefix: `hermes-stackchan/jeeves`
 - Wakeword: `Computer` unless the pair profile overrides it

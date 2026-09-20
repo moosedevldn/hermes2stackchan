@@ -32,7 +32,7 @@
     {
       "pair_id": "jeeves",
       "hermes_id": "hermes-jeeves",
-      "stackchan_id": "stackchan-jeeves",
+      "stackchan_id": "jeevesrobot",
       "mqtt_prefix": "hermes-stackchan/jeeves",
       "capabilities_file": "capabilities/bridge-capabilities-jeeves.md",
       "personality_file": "personalities/hermes-jeeves.md",
