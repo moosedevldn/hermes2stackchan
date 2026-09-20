@@ -438,6 +438,51 @@ Use your actual serial port. Common macOS names look like:
 /dev/cu.usbserial-*
 ```
 
+### Jeeves-Specific Notes (2026-09-20)
+
+This fork is hosted at `https://github.com/moosedevldn/hermes2stackchan.git` and is a submodule of the JeevesRobot parent repo.
+
+**Critical differences from upstream wollux/hermes2stackchan:**
+
+1. **SPI clock**: Set to 10MHz (not 40MHz) to prevent DMA transfer corruption. Line 121 in `firmware/main/main.cpp`:
+   ```cpp
+   io_config.pclk_hz = 10 * 1000 * 1000;  // 10MHz — NOT 40MHz
+   ```
+
+2. **LCD colour inversion**: Set to `false` (not `true`). The ili9341 hardware has auto-inversion ON by default; disabling firmware inversion gives the correct white-lines-on-black-background. Line 128:
+   ```cpp
+   ESP_ERROR_CHECK(esp_lcd_panel_invert_color(g_panel, false));
+   ```
+
+3. **Force face redraw at boot**: `g_force_face_redraw = true` in `display_boot()`. Without this, the face never draws at boot because the default emotion/intensity matches the stored state. Line 3828:
+   ```cpp
+   void display_boot() {
+       g_force_face_redraw = true;  // MUST be set for face to render
+       draw_face("neutral", 65);
+   }
+   ```
+
+4. **Line colours**: All face drawing functions use `kBlack` for lines and `kWhite` for background. This is correct with `invert_color(false)`.
+
+**Wake word**: Currently "Computer". Update to "Jeeves" in Phase 3 when WakeNet model is generated.
+
+**Build environment**: ESP-IDF 5.5. Use `python3` (not `python3.11`) for firmware builds — `source ~/esp/esp-idf/export.sh` sets Python 3.9.6. The bridge uses `python3.11` separately.
+
+**Jeeves build/flash commands:**
+```bash
+cd ~/Documents/01\ AI/01\ Working\ Folder/JeevesRobot/src/hermes2stackchan
+export IDF_PATH=~/esp/esp-idf && source ~/esp/esp-idf/export.sh
+python3 scripts/apply_firmware_env.py --env firmware/.env --sdkconfig firmware/sdkconfig
+cd firmware && idf.py build && idf.py -p /dev/cu.usbmodem4101 flash
+```
+
+**Jeeves bridge command:**
+```bash
+cd ~/Documents/01\ AI/01\ Working\ Folder/JeevesRobot/src/hermes2stackchan
+python3.11 -m bridge.hermes2stackchan_bridge run --pair jeeves --no-life --no-info --no-idle-sleep --no-touch-lamp --no-touch-emotions --no-power
+```
+
+
 ## 6: Smoke Test MQTT
 
 From the bridge checkout:
