@@ -6007,46 +6007,57 @@ def make_tts_wav_piper(text: str, speech: SpeechConfig, out_path: Path) -> None:
             f"(set H2S_PIPER_VOICE to the path of an .onnx file)"
         )
 
-    # PiperVoice.load() derives the .onnx.json config path from model_path when
-    # none is passed, exactly as the bundled CLI does.
-    voice = PiperVoice.load(model_path)
+    # Load the voice. Wrap so a corrupt model, a missing .onnx.json, or an
+    # onnxruntime failure surfaces as an actionable ConfigError — mirroring the
+    # STT adapter, which catches model-load failures and re-raises a summary.
+    try:
+        voice = PiperVoice.load(model_path)
+    except Exception as exc:
+        raise ConfigError(f"Could not load Piper voice {model_path}: {exc}") from exc
 
-    # Synthesize into a raw 22050 Hz mono s16 WAV using the first chunk's
-    # header values (this is how the piper CLI writes WAVs), then resample.
+    # Synthesize into a raw WAV (native 22050 Hz mono s16) using the first
+    # chunk's header values (this is how the piper CLI writes WAVs), then
+    # resample to 16k. The raw temp file is always removed, even if synthesis
+    # or the ffmpeg resample fails, so a partial asset never lingers in the
+    # /stackchan/tts/ namespace.
     raw_path = out_path.with_suffix(".piper.raw.wav")
-    with wave.open(str(raw_path), "wb") as wav_file:
+    try:
         wav_params_set = False
-        for audio_chunk in voice.synthesize(text, None):
-            if not wav_params_set:
-                wav_file.setframerate(audio_chunk.sample_rate)
-                wav_file.setsampwidth(audio_chunk.sample_width)
-                wav_file.setnchannels(audio_chunk.sample_channels)
-                wav_params_set = True
-            wav_file.writeframes(audio_chunk.audio_int16_bytes)
+        with wave.open(str(raw_path), "wb") as wav_file:
+            for audio_chunk in voice.synthesize(text, None):
+                if not wav_params_set:
+                    wav_file.setframerate(audio_chunk.sample_rate)
+                    wav_file.setsampwidth(audio_chunk.sample_width)
+                    wav_file.setnchannels(audio_chunk.sample_channels)
+                    wav_params_set = True
+                wav_file.writeframes(audio_chunk.audio_int16_bytes)
+        if not wav_params_set:
+            raise ConfigError(f"Piper produced no audio for: {text!r}")
 
-    # Resample to the same 16k mono s16 the edge branch produces.
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            "-loglevel",
-            "error",
-            "-i",
-            str(raw_path),
-            "-ac",
-            "1",
-            "-ar",
-            "16000",
-            "-sample_fmt",
-            "s16",
-            str(out_path),
-        ],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-        timeout=30,
-    )
-    raw_path.unlink(missing_ok=True)
+        # Resample to the same 16k mono s16 the edge branch produces.
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-loglevel",
+                "error",
+                "-i",
+                str(raw_path),
+                "-ac",
+                "1",
+                "-ar",
+                "16000",
+                "-sample_fmt",
+                "s16",
+                str(out_path),
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            timeout=30,
+        )
+    finally:
+        raw_path.unlink(missing_ok=True)
 
 
 def make_tts_wav(text: str, speech: SpeechConfig, request_id: str) -> str:
