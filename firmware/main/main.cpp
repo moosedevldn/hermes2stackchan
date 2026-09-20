@@ -3472,7 +3472,7 @@ void apply_robot_brow_pose(RobotFaceConfig& config, int brow_mode, int brow_phas
 RobotFaceConfig robot_face_config(const char* emotion, int intensity_pct)
 {
     RobotFaceConfig config = {};
-    config.line_color = kBlack;
+    config.line_color = rgb565(245, 248, 250);
     config.accent_color = config.line_color;
     const int energy = clamp_int(intensity_pct, 0, 100);
     const int awake_boost = (energy - 60) / 12;
@@ -3563,7 +3563,7 @@ RobotFaceConfig robot_face_config(const char* emotion, int intensity_pct)
 
 void draw_robot_face_config(RobotFaceConfig config, bool include_motion_gaze)
 {
-    const uint16_t screen = kWhite;
+    const uint16_t screen = kBlack;
     int look_x = config.look_x;
     int look_y = config.look_y;
     if (include_motion_gaze &&
@@ -3824,10 +3824,10 @@ void draw_info_screen(const char* time_text, const char* date_text, const char* 
     copy_ui_mode("info");
     g_info_mode_active = true;
 
-    const uint16_t line = kBlack;
+    const uint16_t line = rgb565(245, 248, 250);
     const uint16_t dim = rgb565(52, 56, 60);
     FrameGuard frame;
-    clear(kWhite);
+    clear(kBlack);
     draw_centered_text(34, g_info_time, 7, line);
     draw_rect(42, 98, 236, 2, dim);
     draw_centered_text(122, g_info_weekday, 3, line);
