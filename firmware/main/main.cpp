@@ -28,6 +28,7 @@
 #include "esp_netif.h"
 #include "esp_random.h"
 #include "esp_system.h"
+#include "esp_sleep.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "esp_wn_models.h"
@@ -5935,6 +5936,33 @@ void handle_device_command(const char* data, int len)
     if (json_bool(root, "display_wake", false)) {
         set_lcd_sleep(false);
         changed = true;
+    }
+
+    // Offline mode (Phase 4.2): the physical power button is wired to the
+    // AXP2101 PMIC, so "off" means a bridge-commanded deep sleep. The device
+    // stops replying once it enters sleep; the wake source is the power button.
+    if (json_bool(root, "power_off", false)) {
+        publish_ack(request_id, "device", "power off - entering deep sleep");
+        // Give the QoS-0 ack time to leave the stack before we sleep.
+        vTaskDelay(pdMS_TO_TICKS(300));
+        ESP_LOGI(kTag, "device power_off: entering deep sleep");
+        esp_deep_sleep(0);
+    }
+
+    // Confirmation of a wake-from-sleep: report the reset reason so the
+    // bridge can verify a deep sleep actually happened.
+    if (json_bool(root, "power_status", false)) {
+        char message[64];
+        const int reset_reason = static_cast<int>(esp_reset_reason());
+        if (reset_reason == ESP_RST_DEEPSLEEP) {
+            std::snprintf(message, sizeof(message), "boot reason: deepsleep");
+        } else {
+            std::snprintf(message, sizeof(message), "boot reason: %d", reset_reason);
+        }
+        publish_ack(request_id, "device", message);
+        publish_status();
+        cJSON_Delete(root);
+        return;
     }
 
     if (!changed) {
