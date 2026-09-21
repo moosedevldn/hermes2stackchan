@@ -7,11 +7,13 @@ idf_component_register(
         "drivers/SCServo_lib/src/SCS.cpp"
         "drivers/SCServo_lib/src/SCSCL.cpp"
         "drivers/SCServo_lib/src/SCSerial.cpp"
+        "drivers/st25r/st25r.cpp"
     INCLUDE_DIRS
         "."
         "drivers/bmi270"
         "drivers/bmi270/BMI270_SensorAPI"
         "drivers/SCServo_lib/src"
+        "drivers/st25r"
     REQUIRES
         driver
         esp_codec_dev

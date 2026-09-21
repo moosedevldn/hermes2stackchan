@@ -6209,6 +6209,45 @@ void handle_system_command(const char* data, int len)
     cJSON_Delete(root);
 }
 
+// Authoritative privacy-mode setter (Phase 4.4).
+//
+// The bridge is authoritative: it answers an nfc_privacy_toggled event with a
+// cmd/privacy message carrying {"privacy_mode": true|false}. The firmware
+// merely stores and reflects the value. A malformed payload (no boolean
+// privacy_mode field) is logged and ignored.
+void handle_privacy_command(const char* data, int len)
+{
+    cJSON* root = cJSON_ParseWithLength(data, len);
+    if (!root) {
+        ESP_LOGW(kTag, "privacy: invalid json — ignored");
+        publish_error("", "privacy", "invalid json");
+        return;
+    }
+    const char* request_id = json_string(root, "request_id");
+    // Only accept when the field is actually present; absent => malformed.
+    cJSON* item = cJSON_GetObjectItemCaseSensitive(root, "privacy_mode");
+    bool mode = false;
+    bool present = false;
+    if (cJSON_IsBool(item)) {
+        mode = cJSON_IsTrue(item);
+        present = true;
+    } else if (cJSON_IsNumber(item)) {
+        mode = item->valueint != 0;
+        present = true;
+    }
+    if (!present) {
+        ESP_LOGW(kTag, "privacy: missing privacy_mode field — ignored");
+        publish_error(request_id, "privacy", "privacy_mode field required");
+        cJSON_Delete(root);
+        return;
+    }
+    g_privacy_mode = mode;
+    ESP_LOGI(kTag, "privacy mode set: %s", mode ? "ON" : "OFF");
+    publish_ack(request_id, "privacy", mode ? "privacy mode ON" : "privacy mode OFF");
+    publish_status();
+    cJSON_Delete(root);
+}
+
 esp_err_t http_event_handler(esp_http_client_event_t* evt)
 {
     if (evt->event_id != HTTP_EVENT_ON_DATA || !evt->user_data || !evt->data || evt->data_len <= 0) {
@@ -6409,6 +6448,11 @@ bool init_camera()
 
 bool capture_and_send_photo(const char* request_id, const char* prompt)
 {
+    // Privacy gate (Phase 4.4): never capture while privacy mode is on.
+    if (g_privacy_mode) {
+        ESP_LOGW(kTag, "camera capture blocked: privacy mode");
+        return false;
+    }
     char photo_url[256] = {};
     build_bridge_photo_url(photo_url, sizeof(photo_url));
     if (photo_url[0] == '\0') {
@@ -6525,6 +6569,51 @@ void camera_init_task(void*)
     init_camera();
     publish_status();
     vTaskDelete(nullptr);
+}
+
+// NFC privacy toggle (Phase 4.4).
+//
+// Polls the ST25R3916 for a present tag. On each detected tap (debounced) it
+// proposes the opposite of the current privacy mode and emits an event. The
+// bridge is authoritative: it answers the tap with cmd/privacy, which the
+// firmware then stores via handle_privacy_command(). A missing chip is
+// non-fatal — the task simply returns and NFC privacy is unavailable.
+void nfc_task(void*)
+{
+    // Let boot settle before touching the shared I2C bus.
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
+    const bool ready = st25r::init(g_i2c_bus);
+    if (!ready) {
+        ESP_LOGW(kTag, "NFC: ST25R3916 not detected — privacy NFC disabled");
+        vTaskDelete(nullptr);
+        return;
+    }
+    ESP_LOGI(kTag, "NFC: privacy toggle active");
+
+    int64_t last_tap_ms = 0;
+    while (true) {
+        vTaskDelay(pdMS_TO_TICKS(200));
+        if (!st25r::poll_tag_present()) {
+            continue;
+        }
+        // poll_tag_present() already cleared the latched interrupt, so a
+        // still-present tag is a single-consumption event. Debounce rapid
+        // re-triggers so a held tag doesn't flap the mode.
+        const int64_t now_ms = esp_timer_get_time() / 1000;
+        if (now_ms - last_tap_ms < 2000) {
+            continue;
+        }
+        last_tap_ms = now_ms;
+
+        const bool proposed = !g_privacy_mode;
+        const char* msg = proposed ? "privacy ON" : "privacy OFF";
+        ESP_LOGI(kTag, "nfc tag tap: privacy -> %s", msg);
+        // The bridge reads the event field, then takes the bool from a
+        // privacy_mode field if present, else falls back to this message
+        // string — so the generic publish_event message fallback is enough.
+        publish_event("nfc_privacy_toggled", "nfc", "", msg);
+    }
 }
 
 void write_aligned_pcm16(WavPlaybackState& state, const uint8_t* data, int len)
@@ -6837,6 +6926,8 @@ void dispatch_mqtt_payload(const char* topic, int topic_len, const char* data, i
             return;
         }
         handle_say_command(data, data_len);
+    } else if (topic_matches(topic, topic_len, g_topic_privacy)) {
+        handle_privacy_command(data, data_len);
     }
 }
 
@@ -7773,6 +7864,7 @@ void mqtt_event_handler(void*, esp_event_base_t, int32_t event_id, void* event_d
         esp_mqtt_client_subscribe(g_mqtt_client, g_topic_led, 1);
         esp_mqtt_client_subscribe(g_mqtt_client, g_topic_device, 1);
         esp_mqtt_client_subscribe(g_mqtt_client, g_topic_say, 1);
+        esp_mqtt_client_subscribe(g_mqtt_client, g_topic_privacy, 1);
         publish_status();
         draw_face(g_face_emotion, g_face_intensity_pct);
         break;
@@ -7879,6 +7971,7 @@ extern "C" void app_main()
     xTaskCreate(touch_event_task, "touch_event", 8192, nullptr, 2, nullptr);
     xTaskCreate(sensor_interaction_task, "interaction", 12288, nullptr, 2, nullptr);
     xTaskCreate(camera_init_task, "camera_init", 12288, nullptr, 2, nullptr);
+    xTaskCreate(nfc_task, "nfc", 8192, nullptr, 2, nullptr);
 
     if (!init_wifi()) {
         return;
