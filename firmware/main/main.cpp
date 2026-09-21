@@ -23,6 +23,7 @@
 #include "esp_lcd_ili9341.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
+#include "drivers/st25r/st25r.h"
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_random.h"
@@ -164,6 +165,7 @@ volatile bool g_battery_known = false;
 volatile bool g_usb_power_present = false;
 volatile int g_battery_current_direction = -1;
 volatile bool g_camera_available = false;
+volatile bool g_privacy_mode = false;
 volatile int g_led_mode = 0;
 volatile int g_led_r = 0;
 volatile int g_led_g = 0;
@@ -209,6 +211,7 @@ bool init_camera();
 bool capture_and_send_photo(const char* request_id, const char* prompt);
 void camera_init_task(void* arg);
 void photo_capture_task(void* arg);
+void nfc_task(void* arg);
 volatile bool g_audio_input_ready = false;
 volatile bool g_tts_playing = false;
 volatile bool g_wakeword_enabled = true;
@@ -251,6 +254,7 @@ char g_topic_audio[96] = {};
 char g_topic_led[96] = {};
 char g_topic_device[96] = {};
 char g_topic_say[96] = {};
+char g_topic_privacy[96] = {};
 char g_topic_status[96] = {};
 char g_topic_ack[96] = {};
 char g_topic_error[96] = {};
@@ -4772,6 +4776,7 @@ void build_topics()
     std::snprintf(g_topic_led, sizeof(g_topic_led), "hermes-stackchan/%s/cmd/led", pair_id);
     std::snprintf(g_topic_device, sizeof(g_topic_device), "hermes-stackchan/%s/cmd/device", pair_id);
     std::snprintf(g_topic_say, sizeof(g_topic_say), "hermes-stackchan/%s/cmd/say", pair_id);
+    std::snprintf(g_topic_privacy, sizeof(g_topic_privacy), "hermes-stackchan/%s/cmd/privacy", pair_id);
     std::snprintf(g_topic_status, sizeof(g_topic_status), "hermes-stackchan/%s/status", pair_id);
     std::snprintf(g_topic_ack, sizeof(g_topic_ack), "hermes-stackchan/%s/ack", pair_id);
     std::snprintf(g_topic_error, sizeof(g_topic_error), "hermes-stackchan/%s/error", pair_id);
@@ -5008,6 +5013,7 @@ void publish_status()
                   "\"ui\":{\"mode\":\"%s\"},"
                   "\"speaker\":{\"ready\":%s,\"volume_pct\":%d},"
                   "\"camera_available\":%s,"
+                  "\"privacy_mode\":%s,"
                   "\"firmware\":\"1.0.0-mqtt-hardware\","
                   "\"firmware_version\":\"1.0.0-mqtt-hardware\"}",
                   CONFIG_STACKCHAN_PAIR_ID,
@@ -5089,7 +5095,8 @@ void publish_status()
                   g_ui_mode,
                   g_audio_output_ready ? "true" : "false",
                   g_speaker_volume_pct,
-                  g_camera_available ? "true" : "false");
+                  g_camera_available ? "true" : "false",
+                  g_privacy_mode ? "true" : "false");
     publish_json(g_topic_status, payload, 1, 1);
 }
 

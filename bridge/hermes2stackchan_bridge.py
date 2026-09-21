@@ -195,6 +195,10 @@ class PairConfig:
     def events_topic(self) -> str:
         return f"{self.mqtt_prefix}/events"
 
+    @property
+    def privacy_topic(self) -> str:
+        return f"{self.mqtt_prefix}/cmd/privacy"
+
 
 @dataclass(frozen=True)
 class HermesConfig:
@@ -1268,6 +1272,31 @@ def privacy_policy_for_mode(mode: str) -> dict[str, Any]:
         },
     }
     return {"mode": mode, **policies[mode]}
+
+
+def nfc_privacy_event_to_mode(payload: dict[str, Any]) -> str | None:
+    """Map an NFC privacy-toggle event to a privacy mode.
+
+    Returns "private" (engaged) or "normal" (disengaged) for a
+    ``nfc_privacy_toggled`` payload; any other event returns None. The
+    boolean is taken from the ``privacy_mode`` field when it is a bool,
+    otherwise from the ``message`` string ("privacy ON"/"privacy OFF").
+    """
+    if not isinstance(payload, dict):
+        return None
+    if payload.get("event") != "nfc_privacy_toggled":
+        return None
+    flag = payload.get("privacy_mode")
+    if isinstance(flag, bool):
+        return "private" if flag else "normal"
+    message = optional_string(payload.get("message"))
+    if message:
+        normalized = " ".join(message.strip().lower().split())
+        if "privacy on" in normalized:
+            return "private"
+        if "privacy off" in normalized:
+            return "normal"
+    return None
 
 
 def append_jsonl(path_value: str, item: dict[str, Any], keep: int | None = None) -> None:
@@ -7421,6 +7450,60 @@ def watch_reminders(args: argparse.Namespace) -> int:
         client.disconnect()
 
 
+def watch_privacy(args: argparse.Namespace) -> int:
+    config = load_config(Path(args.config), Path(args.env))
+    pair = get_pair(config, args.pair)
+    client = create_mqtt_client(config.mqtt)
+    poll_s = 0.25
+    done = Event()
+
+    def on_message(_client: Any, _userdata: Any, message: Any) -> None:
+        if message.topic != pair.events_topic:
+            return
+        try:
+            data = json.loads(message.payload.decode("utf-8"))
+        except json.JSONDecodeError:
+            return
+        if not isinstance(data, dict):
+            return
+        mode = nfc_privacy_event_to_mode(data)
+        if mode is None:
+            return
+        on = mode == "private"
+        write_companion_pair_state(config, pair, {"privacy_mode": mode})
+        print(
+            f"[{time.strftime('%H:%M:%S')}] [bridge] NFC privacy -> {mode}",
+            flush=True,
+        )
+        try:
+            client.publish(
+                pair.privacy_topic,
+                json.dumps({"privacy_mode": on}, ensure_ascii=False, separators=(",", ":")),
+                qos=0,
+                retain=False,
+            )
+        except Exception as exc:
+            print(f"[{time.strftime('%H:%M:%S')}] [bridge] NFC privacy sync skipped: {exc}", flush=True)
+
+    client.on_message = on_message
+    try:
+        connect_and_start(client, config.mqtt)
+        client.subscribe([(pair.events_topic, 0)])
+        print(
+            f"[{time.strftime('%H:%M:%S')}] [bridge] privacy watcher active for {pair.pair_id}: "
+            f"nfc_privacy_toggled on {pair.events_topic} -> private/normal",
+            flush=True,
+        )
+        while not done.wait(poll_s):
+            pass
+        return 0
+    except KeyboardInterrupt:
+        return 0
+    finally:
+        client.loop_stop()
+        client.disconnect()
+
+
 def bridge_worker(
     name: str,
     target: Any,
@@ -7446,6 +7529,13 @@ def run_bridge(args: argparse.Namespace) -> int:
     stop_event = Event()
     restart_delay_s = max(0.5, float(args.restart_delay_s))
     workers: list[tuple[str, Any, argparse.Namespace]] = []
+
+    # Always-on: NFC privacy event -> private/normal policy. Never gated.
+    workers.append((
+        "privacy",
+        watch_privacy,
+        argparse.Namespace(config=args.config, env=args.env, pair=args.pair),
+    ))
 
     if not args.no_audio:
         workers.append((

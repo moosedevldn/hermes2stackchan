@@ -49,6 +49,7 @@ from bridge.hermes2stackchan_bridge import (
     motion_action_duration_ms,
     life_motion_size,
     mqtt_settle_delay_after_publish_s,
+    nfc_privacy_event_to_mode,
     notify_actions_from_payload,
     notify_text_from_payload,
     normalize_motion_points,
@@ -138,6 +139,35 @@ class BridgeConfigTests(unittest.TestCase):
         self.assertFalse(private["camera_allowed"])
         self.assertFalse(private["hermes_allowed"])
         self.assertEqual(debug["audio_retention"], "debug")
+
+    def test_nfc_privacy_event_maps_to_mode(self) -> None:
+        self.assertEqual(
+            nfc_privacy_event_to_mode({"event": "nfc_privacy_toggled", "source": "nfc", "privacy_mode": True, "message": "privacy ON"}),
+            "private",
+        )
+        self.assertEqual(
+            nfc_privacy_event_to_mode({"event": "nfc_privacy_toggled", "source": "nfc", "privacy_mode": False, "message": "privacy OFF"}),
+            "normal",
+        )
+
+    def test_nfc_privacy_event_uses_message_string_fallback(self) -> None:
+        self.assertEqual(
+            nfc_privacy_event_to_mode({"event": "nfc_privacy_toggled", "source": "nfc", "message": "privacy ON"}),
+            "private",
+        )
+        self.assertEqual(
+            nfc_privacy_event_to_mode({"event": "nfc_privacy_toggled", "source": "nfc", "message": "privacy OFF"}),
+            "normal",
+        )
+
+    def test_nfc_privacy_event_ignores_other_events(self) -> None:
+        self.assertIsNone(nfc_privacy_event_to_mode({"event": "touch_down", "source": "touch"}))
+        self.assertIsNone(nfc_privacy_event_to_mode({"event": "nfc_privacy_toggled", "privacy_mode": "true"}))
+        self.assertIsNone(nfc_privacy_event_to_mode({}))
+
+    def test_private_policy_disables_camera_and_hermes(self) -> None:
+        self.assertIs(privacy_policy_for_mode("private")["camera_allowed"], False)
+        self.assertIs(privacy_policy_for_mode("private")["hermes_allowed"], False)
 
     def test_hermes_context_package_contains_profile_privacy_and_capabilities(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
