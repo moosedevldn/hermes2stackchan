@@ -7576,16 +7576,26 @@ void led_effect_task(void*)
     int scanner_pos = 0;
     int scanner_dir = 1;
     bool voice_led_active = false;
+    bool privacy_led_active = false;
     while (true) {
         // Privacy mode takes top priority: solid red, overriding touch/recording/mood effects.
         if (g_privacy_mode) {
             if (g_neon_ready) {
                 set_neon_range(0, 12, 200, 0, 0);
                 show_neon_pixels();
+                privacy_led_active = true;
             }
             vTaskDelay(pdMS_TO_TICKS(100));
             continue;
         }
+        // On privacy disengage, clear the orphaned solid red once (mirrors the
+        // voice_led_active reset) so normal effects or off take over. Without
+        // this, the mode<=0 path writes nothing and the red sticks.
+        if (privacy_led_active && g_neon_ready) {
+            set_neon_range(0, 12, 0, 0, 0);
+            show_neon_pixels();
+        }
+        privacy_led_active = false;
         const int mode = static_cast<int>(g_led_mode);
         const int touch_side_light = static_cast<int>(g_touch_side_light);
         if (g_neon_ready && touch_side_light != 0 && !g_recording) {
