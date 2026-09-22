@@ -206,6 +206,9 @@ class HermesConfig:
     api_key: str | None = None
     model: str = "default"
     timeout_s: float = 30.0
+    # When True, requests carry chat_template_kwargs={"enable_thinking": False}
+    # so Qwen3 "thinking" models skip internal reasoning (much faster replies).
+    disable_thinking: bool = False
 
 
 @dataclass(frozen=True)
@@ -325,6 +328,7 @@ def load_config(
         api_key=optional_string(env.get("H2S_HERMES_API_KEY") or env.get("API_SERVER_KEY") or hermes_raw.get("api_key")),
         model=env.get("H2S_HERMES_MODEL") or str(hermes_raw.get("model") or "default"),
         timeout_s=parse_float(env.get("H2S_HERMES_TIMEOUT_S"), float(hermes_raw.get("timeout_s", 30.0)), "H2S_HERMES_TIMEOUT_S"),
+        disable_thinking=parse_bool(env.get("H2S_HERMES_DISABLE_THINKING"), bool(hermes_raw.get("disable_thinking", False)), "H2S_HERMES_DISABLE_THINKING"),
     )
     speech_raw = raw.get("speech") or {}
     if not isinstance(speech_raw, dict):
@@ -1881,6 +1885,8 @@ def ask_hermes_http(
         "messages": build_hermes_messages(pair, capabilities, personality, status, user_text, context),
         "temperature": 0.3,
     }
+    if config.hermes.disable_thinking:
+        payload["chat_template_kwargs"] = {"enable_thinking": False}
     response = http_post_json(
         hermes_chat_url(config.hermes.base_url),
         config.hermes.api_key,
@@ -1918,6 +1924,8 @@ def ask_hermes_vision_http(
         ),
         "temperature": 0.2,
     }
+    if config.hermes.disable_thinking:
+        payload["chat_template_kwargs"] = {"enable_thinking": False}
     response = http_post_json(
         hermes_chat_url(config.hermes.base_url),
         config.hermes.api_key,

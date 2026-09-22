@@ -187,6 +187,21 @@ class BridgeConfigTests(unittest.TestCase):
         self.assertIn("time_date_weekday_calendar_week", context["local_capabilities"])
         self.assertEqual(context["status_summary"]["battery_pct"], 82)
 
+    def test_hermes_disable_thinking_env(self) -> None:
+        config = load_config(
+            Path("config/pairs.example.json"),
+            env_path=None,
+            environ={"H2S_HERMES_DISABLE_THINKING": "true"},
+        )
+        self.assertTrue(config.hermes.disable_thinking)
+
+        config_default = load_config(
+            Path("config/pairs.example.json"),
+            env_path=None,
+            environ={},
+        )
+        self.assertFalse(config_default.hermes.disable_thinking)
+
     def test_hermes_prompt_includes_companion_context(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             config = load_config(
