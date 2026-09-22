@@ -1798,8 +1798,8 @@ def build_hermes_system_content(
         f"Your MQTT namespace is {pair.mqtt_prefix}. Never address another StackChan.",
         f"Your configured wakeword is {pair.wakeword!r}; your configured voice is {pair.voice!r}.",
         "Return JSON only. Do not wrap it in Markdown.",
-        "Schema: {\"reply\":\"short German text\",\"follow_up_listen\":false,\"actions\":[{\"action\":\"display|face|move|motion|led|device|sound|system|reminder\",...}]}",
-        "Answer in German unless the user explicitly asks for another language.",
+        "Schema: {\"reply\":\"short English text\",\"follow_up_listen\":false,\"actions\":[{\"action\":\"display|face|move|motion|led|device|sound|system|reminder\",...}]}",
+        "Answer in English unless the user explicitly asks for another language.",
         "Put the spoken answer only in the top-level reply field. Do not use action say for normal answers, direct messages, reminders, notifications, or command confirmations.",
         "Use display only when you want to show extra visible text beyond reply. The bridge will synthesize reply as audio for StackChan when TTS is enabled.",
         "You may add hardware actions when useful, but never invent unsupported parameters. The bridge and firmware enforce limits.",
@@ -1809,9 +1809,9 @@ def build_hermes_system_content(
         "For normal personality, prefer playful but bounded face/motion choices. Do not stack contradictory actions.",
         "If your reply asks the user a real follow-up question and you expect an immediate answer, set follow_up_listen to true.",
         "If your reply is only a statement, command confirmation, or rhetorical question, set follow_up_listen to false.",
-        "For reminders or notifications, use action reminder with text and delay_s or due_at. Example: {\"action\":\"reminder\",\"text\":\"Wasser trinken\",\"delay_s\":120}.",
-        "If the user only says 'erinnere mich' without enough time or content, ask what/when and set follow_up_listen to true; do not invent reminder details.",
-        "For explicit StackChan sleep commands use {\"action\":\"system\",\"system_action\":\"display_sleep\"}. For wake/display-on commands use display_wake. For explicit power-off/shutdown/runterfahren/abschalten commands use {\"action\":\"system\",\"system_action\":\"shutdown\"}; never use shutdown for ordinary sleep.",
+        "For reminders or notifications, use action reminder with text and delay_s or due_at. Example: {\"action\":\"reminder\",\"text\":\"Drink water\",\"delay_s\":120}.",
+        "If the user only says 'remind me' without enough time or content, ask what/when and set follow_up_listen to true; do not invent reminder details.",
+        "For explicit StackChan sleep commands use {\"action\":\"system\",\"system_action\":\"display_sleep\"}. For wake/display-on commands use display_wake. For explicit power-off/shutdown commands use {\"action\":\"system\",\"system_action\":\"shutdown\"}; never use shutdown for ordinary sleep.",
         "For status questions, use the current status JSON and answer directly; do not invent sensor values.",
         f"Companion context JSON: {context_text}",
         f"Current StackChan status JSON: {status_text}",
@@ -7157,7 +7157,7 @@ class SpeechRequestHandler(http.server.BaseHTTPRequestHandler):
                     privacy = privacy_policy_for_mode(state.get("privacy_mode", self.server.pair.privacy_mode))
                     if not privacy.get("hermes_allowed", True):
                         hermes_response = {
-                            "reply": "Privatmodus. Ich kann gerade nur lokale Befehle.",
+                            "reply": "Privacy mode is on, so I can only handle local commands right now.",
                             "actions": [{"action": "face", "emotion": "friendly", "intensity_pct": 62}],
                         }
                         hermes_ms = 0
@@ -7174,7 +7174,7 @@ class SpeechRequestHandler(http.server.BaseHTTPRequestHandler):
                             )
                         except Exception as exc:
                             hermes_response = {
-                                "reply": "Hermes braucht gerade zu lange. Ich bin aber noch da.",
+                                "reply": "Sorry, that took too long to answer. I'm still here.",
                                 "actions": [{"action": "face", "emotion": "error", "intensity_pct": 62}],
                             }
                             record_telemetry_event(
@@ -7305,12 +7305,12 @@ class SpeechRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_json(200, response_payload)
         except Exception as exc:
             processing_indicator.stop()
-            error_text = f"SPRACHBRIDGE FEHLER: {exc}"
+            error_text = f"Speech bridge error: {exc}"
             print(f"[bridge-http] error request_id={request_id}: {exc}", flush=True)
             try:
                 publish_action_messages(
                     self.server.mqtt_client,
-                    [(self.server.pair.display_topic, build_display_payload("BRIDGE FEHLER", 5000, request_id))],
+                    [(self.server.pair.display_topic, build_display_payload("BRIDGE ERROR", 5000, request_id))],
                     self.server.pair,
                     config=self.server.config,
                     source="speech-error",
