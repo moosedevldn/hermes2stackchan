@@ -73,4 +73,5 @@ mosquitto_pub -h 127.0.0.1 -t "hermes-stackchan/jeeves/cmd/face" \
   action, execute it. No circular debugging.
 - Commit per task with a descriptive message; one concern per commit.
 - Task-based subagents: each task is one subagent, gated by build+test, reviewed
-  for spec compliance then quality before the next task starts.
+  for spec compliance then quality before the next task starts. One task = one failure
+  mode: if a task can fail in more than one way, split it.
