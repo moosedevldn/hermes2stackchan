@@ -5942,21 +5942,20 @@ def transcribe_wav_groq_bytes(audio: bytes, speech: SpeechConfig) -> str:
 
 
 
-def transcribe_wav_local_bytes(audio: bytes, speech: SpeechConfig) -> str:
-    """Transcribe WAV audio using faster-whisper (CTranslate2) running locally."""
-    try:
-        from faster_whisper import WhisperModel
-    except ModuleNotFoundError:
-        raise ConfigError(
-            "faster-whisper not installed. "
-            "Install with: pip install faster-whisper"
-        )
+# Load the faster-whisper model once and reuse it across requests. Loading the
+# medium model (~1.5 GB weights + CTranslate2 engine + VAD init) costs ~10-15 s;
+# it was previously reloaded inside transcribe_wav_local_bytes on EVERY voice
+# round, adding that overhead to every request. Keyed on (model_size, compute).
+_whisper_model_cache: dict = {}
 
-    model_size = speech.local_stt_model or "medium"
-    compute_type = speech.local_stt_compute or "int8"
-    language = speech.language or None
 
-    # Try the requested compute type; fall back through int8 → float32
+def _load_whisper_model(model_size: str, compute_type: str):
+    """Load (or return cached) faster-whisper model. Falls back int8 -> float32."""
+    from faster_whisper import WhisperModel
+    cache_key = (model_size, compute_type)
+    cached = _whisper_model_cache.get(cache_key)
+    if cached is not None:
+        return cached, compute_type
     _compute_types = [compute_type, "int8", "float32"]
     model = None
     actual_compute = compute_type
@@ -5979,6 +5978,25 @@ def transcribe_wav_local_bytes(audio: bytes, speech: SpeechConfig) -> str:
             f"Could not load faster-whisper model with any compute type "
             f"({', '.join(_compute_types)}): {last_exc}"
         )
+    _whisper_model_cache[cache_key] = model
+    return model, actual_compute
+
+
+def transcribe_wav_local_bytes(audio: bytes, speech: SpeechConfig) -> str:
+    """Transcribe WAV audio using faster-whisper (CTranslate2) running locally."""
+    try:
+        from faster_whisper import WhisperModel
+    except ModuleNotFoundError:
+        raise ConfigError(
+            "faster-whisper not installed. "
+            "Install with: pip install faster-whisper"
+        )
+
+    model_size = speech.local_stt_model or "medium"
+    compute_type = speech.local_stt_compute or "int8"
+    language = speech.language or None
+
+    model, actual_compute = _load_whisper_model(model_size, compute_type)
 
     # faster-whisper uses pyav which needs a file-like object, not raw bytes.
     # Wrap audio bytes in a BytesIO with a read() method.
