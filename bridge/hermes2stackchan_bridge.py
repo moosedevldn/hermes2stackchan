@@ -85,9 +85,9 @@ SENSOR_REACTION_COOLDOWN_S = 1.0
 SENSOR_WAKE_COOLDOWN_S = 2.0
 SENSOR_UPRIGHT_CLEANUP_DELAY_S = 3.8
 SENSOR_UPRIGHT_LIFE_PAUSE_S = 10.0
-SENSOR_SIDE_HELP_TEXT = "Hilfe! Ich bin umgekippt!"
-SENSOR_SIDE_THANKS_TEXT = "Danke, ich stehe wieder. Rettung erfolgreich!"
-SENSOR_FACE_DOWN_TEXT = "Hey! Nicht aufs Gesicht. Das mag ich gar nicht!"
+SENSOR_SIDE_HELP_TEXT = "Help! I've fallen over!"
+SENSOR_SIDE_THANKS_TEXT = "Thanks, I'm upright again. Rescue successful!"
+SENSOR_FACE_DOWN_TEXT = "Hey! Not on my face. I really don't like that!"
 REMINDER_STORE_LOCK = RLock()
 LIFE_PAUSE_LOCK = RLock()
 LIFE_PAUSED_UNTIL: dict[str, float] = {}
@@ -2396,6 +2396,29 @@ GERMAN_MONTHS = (
     "November",
     "Dezember",
 )
+ENGLISH_WEEKDAYS = (
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+)
+ENGLISH_MONTHS = (
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+)
 
 
 def local_datetime(now: dt.datetime | None = None) -> dt.datetime:
@@ -2428,10 +2451,10 @@ def format_minutes_duration(minutes: int) -> str:
     minutes = max(0, minutes)
     hours, rest = divmod(minutes, 60)
     if hours and rest:
-        return f"{hours} Stunden und {rest} Minuten"
+        return f"{hours} hours and {rest} minutes"
     if hours:
-        return f"{hours} Stunden"
-    return f"{rest} Minuten"
+        return f"{hours} hours"
+    return f"{rest} minutes"
 
 
 def local_info_reply_from_command(command: str, now: dt.datetime | None = None) -> tuple[str, list[dict[str, Any]], str] | None:
@@ -2453,66 +2476,66 @@ def local_info_reply_from_command(command: str, now: dt.datetime | None = None) 
         and any(verb in padded for verb in (" zeige ", " zeig ", " anzeigen ", " anzeige ", " mach ", " modus "))
     )
     if explicit_info or compact in {"datumunduhrzeit", "uhrzeitunddatum"} or date_time_request:
-        return "Info Modus.", [{"action": "info"}], ""
+        return "Info mode.", [{"action": "info"}], ""
     return None
 
 
 def local_time_reply_from_command(command: str, now: dt.datetime | None = None) -> tuple[str, list[dict[str, Any]], str] | None:
     current = local_datetime(now)
     padded = f" {command} "
-    weekday = GERMAN_WEEKDAYS[current.weekday()]
-    month = GERMAN_MONTHS[current.month - 1]
+    weekday = ENGLISH_WEEKDAYS[current.weekday()]
+    month = ENGLISH_MONTHS[current.month - 1]
 
     for index, normalized_day in enumerate(GERMAN_WEEKDAY_NORMALIZED):
         if f"heute {normalized_day}" in command or f"heute ein {normalized_day}" in command or f"heute {normalized_day}?" in command:
             if current.weekday() == index:
-                return f"Ja, heute ist {GERMAN_WEEKDAYS[index]}.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
-            return f"Nein, heute ist {weekday}.", [{"action": "face", "emotion": "thinking", "intensity_pct": 60}], ""
+                return f"Yes, today is {ENGLISH_WEEKDAYS[index]}.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
+            return f"No, today is {weekday}.", [{"action": "face", "emotion": "thinking", "intensity_pct": 60}], ""
 
     if "wochenende" in command:
         if current.weekday() >= 5:
-            return "Ja, es ist Wochenende.", [{"action": "face", "emotion": "happy", "intensity_pct": 66}], ""
+            return "Yes, it's the weekend.", [{"action": "face", "emotion": "happy", "intensity_pct": 66}], ""
         days_until_saturday = 5 - current.weekday()
         target = (current + dt.timedelta(days=days_until_saturday)).replace(hour=0, minute=0, second=0, microsecond=0)
         minutes = int((target - current).total_seconds() // 60)
-        return f"Bis zum Wochenende sind es noch {format_minutes_duration(minutes)}.", [{"action": "face", "emotion": "thinking", "intensity_pct": 60}], ""
+        return f"It's {format_minutes_duration(minutes)} until the weekend.", [{"action": "face", "emotion": "thinking", "intensity_pct": 60}], ""
 
     if "mitternacht" in command:
         target = (current + dt.timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
         minutes = int((target - current).total_seconds() // 60)
-        return f"Bis Mitternacht sind es noch {format_minutes_duration(minutes)}.", [{"action": "face", "emotion": "thinking", "intensity_pct": 60}], ""
+        return f"It's {format_minutes_duration(minutes)} until midnight.", [{"action": "face", "emotion": "thinking", "intensity_pct": 60}], ""
 
     if any(token in padded for token in (" uhrzeit ", " wie spaet ", " wieviel uhr ", " welche uhrzeit ")):
         if current.minute:
-            text = f"Es ist {current.hour} Uhr {current.minute:02d}."
+            text = f"It's {current.hour}:{current.minute:02d}."
         else:
-            text = f"Es ist {current.hour} Uhr."
+            text = f"It's {current.hour}:00."
         return text, [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
 
     if "kalenderwoche" in command or "kw" in padded:
-        return f"Kalenderwoche {current.isocalendar().week}.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
+        return f"Week {current.isocalendar().week}.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
 
     if "wochentag" in command or "welcher tag" in command:
-        return f"Heute ist {weekday}.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
+        return f"Today is {weekday}.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
 
     if "datum" in command or "welches datum" in command:
-        return f"Heute ist {weekday}, der {current.day}. {month} {current.year}.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
+        return f"Today is {weekday}, {current.day} {month} {current.year}.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
 
     if "monat" in command and command.startswith(("welcher", "was", "sag", "zeige")):
-        return f"Wir haben {month}.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
+        return f"It's {month}.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
 
     if "jahr" in command and command.startswith(("welches", "was", "sag", "zeige")):
-        return f"Wir haben {current.year}.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
+        return f"It's {current.year}.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
 
     if "tageszeit" in command or "guten morgen" in command or "guten abend" in command:
         if 5 <= current.hour < 11:
-            greeting = "Guten Morgen."
+            greeting = "Good morning."
         elif 11 <= current.hour < 17:
-            greeting = "Guten Tag."
+            greeting = "Good afternoon."
         elif 17 <= current.hour < 22:
-            greeting = "Guten Abend."
+            greeting = "Good evening."
         else:
-            greeting = "Gute Nacht."
+            greeting = "Good night."
         return greeting, [{"action": "face", "emotion": "friendly", "intensity_pct": 66}], ""
 
     return None
@@ -2567,16 +2590,16 @@ def local_reminder_reply_from_command(command: str, now: dt.datetime | None = No
         return None
 
     if is_timer:
-        text = "Timer abgelaufen."
+        text = "Timer done."
         seconds = delay_s or 0
         if seconds >= 3600:
             hours = seconds // 3600
-            reply = f"Timer auf {hours} {'Stunde' if hours == 1 else 'Stunden'} gestellt."
+            reply = f"Timer set for {hours} {'hour' if hours == 1 else 'hours'}."
         elif seconds >= 60:
             minutes = seconds // 60
-            reply = f"Timer auf {minutes} {'Minute' if minutes == 1 else 'Minuten'} gestellt."
+            reply = f"Timer set for {minutes} {'minute' if minutes == 1 else 'minutes'}."
         else:
-            reply = f"Timer auf {seconds} {'Sekunde' if seconds == 1 else 'Sekunden'} gestellt."
+            reply = f"Timer set for {seconds} {'second' if seconds == 1 else 'seconds'}."
     else:
         reminder_text = ""
         match = re.search(r"\ban\s+(.+)$", command)
@@ -2587,7 +2610,7 @@ def local_reminder_reply_from_command(command: str, now: dt.datetime | None = No
         if not reminder_text:
             return None
         text = reminder_text[:120]
-        reply = "Erinnerung gestellt."
+        reply = "Reminder set."
 
     action: dict[str, Any] = {"action": "reminder", "text": text}
     if delay_s is not None:
@@ -2605,7 +2628,7 @@ def local_math_reply_from_command(command: str) -> tuple[str, list[dict[str, Any
         right = spoken_int_token(percent.group(2))
         if left is not None and right is not None:
             result = right * left / 100
-            text = f"Das sind {result:g}."
+            text = f"That's {result:g}."
             return text, [{"action": "face", "emotion": "thinking", "intensity_pct": 62}], ""
 
     match = re.search(rf"\b{number}\s+(plus|minus|mal|geteilt(?: durch)?)\s+{number}\b", command)
@@ -2624,33 +2647,33 @@ def local_math_reply_from_command(command: str) -> tuple[str, list[dict[str, Any
         result = left * right
     else:
         if right == 0:
-            return "Durch null lieber nicht.", [{"action": "face", "emotion": "skeptical", "intensity_pct": 65}], ""
+            return "Dividing by zero, I'd rather not.", [{"action": "face", "emotion": "skeptical", "intensity_pct": 65}], ""
         result = left / right
-    return f"Das sind {result:g}.", [{"action": "face", "emotion": "thinking", "intensity_pct": 62}], ""
+    return f"That's {result:g}.", [{"action": "face", "emotion": "thinking", "intensity_pct": 62}], ""
 
 
 def local_random_reply_from_command(command: str) -> tuple[str, list[dict[str, Any]], str] | None:
     padded = f" {command} "
     if " wuerfel " in padded or command.startswith("wuerfel") or "wuerfeln" in command:
-        return f"Ich wuerfle {random.randint(1, 6)}.", [{"action": "face", "emotion": "mischievous", "intensity_pct": 62}], ""
+        return f"I roll a {random.randint(1, 6)}.", [{"action": "face", "emotion": "mischievous", "intensity_pct": 62}], ""
     if "kopf oder zahl" in command:
-        return f"Ich nehme {random.choice(('Kopf', 'Zahl'))}.", [{"action": "face", "emotion": "mischievous", "intensity_pct": 62}], ""
+        return f"I'll take {random.choice(('Heads', 'Tails'))}.", [{"action": "face", "emotion": "mischievous", "intensity_pct": 62}], ""
     if command.startswith(("waehle ", "such dir ", "entscheide ")) and " oder " in command:
         tail = re.sub(r"^(waehle|such dir|entscheide)\s+", "", command).strip()
         options = [part.strip(" .") for part in tail.split(" oder ") if part.strip(" .")]
         if len(options) >= 2:
-            return f"Ich nehme {random.choice(options)}.", [{"action": "face", "emotion": "mischievous", "intensity_pct": 62}], ""
+            return f"I'll take {random.choice(options)}.", [{"action": "face", "emotion": "mischievous", "intensity_pct": 62}], ""
     return None
 
 
 def local_identity_reply_from_command(command: str) -> tuple[str, list[dict[str, Any]], str] | None:
     if "wer bist du" in command:
-        return "Ich bin StackChan, lokal schnell und mit Hermes im Ruecken.", [{"action": "face", "emotion": "friendly", "intensity_pct": 68}], ""
+        return "I'm StackChan, fast and local with Hermes in my corner.", [{"action": "face", "emotion": "friendly", "intensity_pct": 68}], ""
     if "bist du wach" in command or command == "hallo" or command == "computer":
-        return "Ja, ich bin wach.", [{"action": "face", "emotion": "friendly", "intensity_pct": 68}], ""
+        return "Yes, I'm awake.", [{"action": "face", "emotion": "friendly", "intensity_pct": 68}], ""
     if "was kannst du lokal" in command or "was kannst du alleine" in command:
         return (
-            "Lokal kann ich Zeit, Datum, Timer, Akku, Temperatur, Lautstaerke, Helligkeit, LEDs, Display und Kopfbewegungen.",
+            "Locally I can handle time, date, timers, battery, temperature, volume, brightness, LEDs, display and head movement.",
             [{"action": "face", "emotion": "friendly", "intensity_pct": 68}],
             "",
         )
@@ -2677,17 +2700,17 @@ def local_history_reply_from_transcript(
         return None
     items = read_recent_interactions(config, pair, limit=3)
     if not items:
-        return "Ich habe noch keinen Verlauf fuer heute.", [{"action": "face", "emotion": "thinking", "intensity_pct": 62}], ""
+        return "I haven't logged anything today yet.", [{"action": "face", "emotion": "thinking", "intensity_pct": 62}], ""
     parts: list[str] = []
     for item in items:
         transcript = optional_string(item.get("transcript"))
         reply = optional_string(item.get("reply"))
         if transcript and reply:
-            parts.append(f"Du sagtest: {transcript}. Ich antwortete: {reply}.")
+            parts.append(f"You said: {transcript}. I answered: {reply}.")
         elif reply:
-            parts.append(f"Ich sagte: {reply}.")
+            parts.append(f"I said: {reply}.")
     if not parts:
-        return "Im Verlauf steht gerade nichts Lesbares.", [{"action": "face", "emotion": "thinking", "intensity_pct": 62}], ""
+        return "The log has nothing readable just now.", [{"action": "face", "emotion": "thinking", "intensity_pct": 62}], ""
     return " ".join(parts)[:450], [{"action": "face", "emotion": "thinking", "intensity_pct": 62}], ""
 
 
@@ -2773,7 +2796,7 @@ def direct_status_reply_from_transcript(
                 "bildschirm",
             )
         ):
-            return "Status ist gerade nicht verfuegbar.", [{"action": "face", "emotion": "error", "intensity_pct": 55}], ""
+            return "Status isn't available just now.", [{"action": "face", "emotion": "error", "intensity_pct": 55}], ""
         return None
 
     if any(token in f" {command} " for token in ("akku", "akkustand", "batterie")):
@@ -2781,12 +2804,12 @@ def direct_status_reply_from_transcript(
         external = status_bool(status.get("external_power")) is True
         charging = status_bool(status.get("battery_charging")) is True
         if charging:
-            suffix = "und laedt."
+            suffix = "and charging."
         elif external:
-            suffix = "und haengt am Strom."
+            suffix = "and plugged in."
         else:
-            suffix = "und laeuft auf Akku."
-        return f"Akku {pct} Prozent, {suffix}", [{"action": "face", "emotion": "battery", "intensity_pct": 65}], ""
+            suffix = "and running on battery."
+        return f"Battery {pct} percent, {suffix}", [{"action": "face", "emotion": "battery", "intensity_pct": 65}], ""
 
     if any(token in f" {command} " for token in ("temperatur", "warm")):
         soc = status_int_at(status, "temperature.soc_c", -1)
@@ -2794,63 +2817,63 @@ def direct_status_reply_from_transcript(
         pitch = status_int_at(status, "temperature.servo_pitch_c", -1)
         parts = []
         if soc >= 0:
-            parts.append(f"SoC {soc} Grad")
+            parts.append(f"SoC {soc}C")
         if yaw >= 0:
-            parts.append(f"Yaw Servo {yaw} Grad")
+            parts.append(f"Yaw servo {yaw}C")
         if pitch >= 0:
-            parts.append(f"Pitch Servo {pitch} Grad")
-        text = ", ".join(parts) if parts else "Temperaturen sind gerade nicht bekannt."
+            parts.append(f"Pitch servo {pitch}C")
+        text = ", ".join(parts) if parts else "Temperatures aren't known just now."
         return text, [{"action": "face", "emotion": "neutral", "intensity_pct": 60}], ""
 
     if "helligkeit" in command and command.startswith(("wie ", "was ", "sag ", "zeige ")):
         pct = status_percent(status, "brightness_pct", 0)
-        return f"Helligkeit {pct} Prozent.", [], ""
+        return f"Brightness {pct} percent.", [], ""
 
     if "lautstaerke" in command and command.startswith(("wie ", "was ", "sag ", "zeige ")):
         pct = status_percent(status, "speaker.volume_pct", status_int_at(status, "volume_pct", 0))
-        return f"Lautstaerke {pct} Prozent.", [], ""
+        return f"Volume {pct} percent.", [], ""
 
     if any(token in f" {command} " for token in ("wlan", "wifi")):
         rssi = status_int_at(status, "wifi.rssi", status_int_at(status, "wifi_rssi", 0))
         connected = status_bool(nested_status_value(status, "wifi.connected"))
         if connected is False:
-            return "WLAN ist gerade nicht verbunden.", [{"action": "face", "emotion": "error", "intensity_pct": 55}], ""
+            return "Wi-Fi isn't connected just now.", [{"action": "face", "emotion": "error", "intensity_pct": 55}], ""
         if rssi:
-            return f"WLAN ist verbunden, RSSI {rssi} dBm.", [{"action": "face", "emotion": "neutral", "intensity_pct": 60}], ""
-        return "WLAN Status ist nicht genau bekannt.", [{"action": "face", "emotion": "thinking", "intensity_pct": 60}], ""
+            return f"Wi-Fi is connected, RSSI {rssi} dBm.", [{"action": "face", "emotion": "neutral", "intensity_pct": 60}], ""
+        return "Wi-Fi status isn't exactly known.", [{"action": "face", "emotion": "thinking", "intensity_pct": 60}], ""
 
     if "kamera" in command or "foto" in command:
         camera_ready = status_bool(status.get("camera_available"))
         if camera_ready is True:
-            return "Kamera ist verfuegbar.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
+            return "The camera is available.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
         if camera_ready is False:
-            return "Kamera ist nicht verfuegbar.", [{"action": "face", "emotion": "error", "intensity_pct": 55}], ""
+            return "The camera isn't available.", [{"action": "face", "emotion": "error", "intensity_pct": 55}], ""
 
     if "display" in command or "bildschirm" in command:
         sleeping = status_bool(status.get("display_sleeping"))
         if sleeping is True:
-            return "Display schlaeft.", [{"action": "face", "emotion": "sleepy", "intensity_pct": 60}], ""
+            return "The display is asleep.", [{"action": "face", "emotion": "sleepy", "intensity_pct": 60}], ""
         if sleeping is False:
-            return "Display ist wach.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
+            return "The display is awake.", [{"action": "face", "emotion": "friendly", "intensity_pct": 62}], ""
 
     if any(token in f" {command} " for token in ("naehe", "naehesensor", "proximity", "finger")):
         near = status_bool(nested_status_value(status, "sensors.ltr553.near")) is True
         delta = status_int_at(status, "sensors.ltr553.proximity_delta", 0)
         if near or delta >= SENSOR_PROXIMITY_ON_DELTA:
-            return f"Naehe erkannt, Delta {delta}.", [{"action": "face", "emotion": "glance_down", "intensity_pct": 62}], ""
-        return f"Keine Naehe erkannt, Delta {delta}.", [{"action": "face", "emotion": "neutral", "intensity_pct": 60}], ""
+            return f"Proximity detected, delta {delta}.", [{"action": "face", "emotion": "glance_down", "intensity_pct": 62}], ""
+        return f"No proximity, delta {delta}.", [{"action": "face", "emotion": "neutral", "intensity_pct": 60}], ""
 
     if any(token in f" {command} " for token in ("seite", "liegst", "liegt")):
         if sensor_status_is_sideways(status):
-            return "Ich liege auf der Seite.", [{"action": "face", "emotion": "surprised", "intensity_pct": 78}], ""
-        return "Ich stehe normal.", [{"action": "face", "emotion": "neutral", "intensity_pct": 60}], ""
+            return "I'm on my side.", [{"action": "face", "emotion": "surprised", "intensity_pct": 78}], ""
+        return "I'm standing normally.", [{"action": "face", "emotion": "neutral", "intensity_pct": 60}], ""
 
     if any(token in f" {command} " for token in ("geschuettelt", "schuetteln", "bewegung", "imu")):
         score = status_int_at(status, "sensors.imu.motion_score_pct", 0)
         active = status_bool(nested_status_value(status, "sensors.imu.motion_active")) is True
         if active:
-            return f"Bewegung erkannt, Score {score} Prozent.", [{"action": "face", "emotion": "surprise_pop", "intensity_pct": 75}], ""
-        return f"Keine starke Bewegung, Score {score} Prozent.", [{"action": "face", "emotion": "neutral", "intensity_pct": 60}], ""
+            return f"Motion detected, score {score} percent.", [{"action": "face", "emotion": "surprise_pop", "intensity_pct": 75}], ""
+        return f"No strong motion, score {score} percent.", [{"action": "face", "emotion": "neutral", "intensity_pct": 60}], ""
 
     if "sensor" in command or "sensoren" in command:
         imu_ready = status_bool(nested_status_value(status, "sensors.imu.ready")) is True
@@ -2858,9 +2881,9 @@ def direct_status_reply_from_transcript(
         motion = status_int_at(status, "sensors.imu.motion_score_pct", 0)
         proximity = status_int_at(status, "sensors.ltr553.proximity_delta", 0)
         text = (
-            f"IMU {'bereit' if imu_ready else 'nicht bereit'}, "
-            f"LTR553 {'bereit' if ltr_ready else 'nicht bereit'}, "
-            f"Bewegung {motion} Prozent, Naehe Delta {proximity}."
+            f"IMU {'ready' if imu_ready else 'not ready'}, "
+            f"LTR553 {'ready' if ltr_ready else 'not ready'}, "
+            f"Motion {motion} percent, proximity delta {proximity}."
         )
         return text, [{"action": "face", "emotion": "neutral", "intensity_pct": 60}], ""
 
@@ -2910,7 +2933,7 @@ def direct_local_command_from_transcript(
         "shutdown",
     )
     if any(is_command_phrase(phrase) for phrase in shutdown_phrases):
-        return "Ich fahre jetzt runter.", [], "shutdown"
+        return "Powering down now.", [], "shutdown"
 
     reboot_phrases = (
         "neustart",
@@ -2919,7 +2942,7 @@ def direct_local_command_from_transcript(
         "reboot",
     )
     if any(is_command_phrase(phrase) for phrase in reboot_phrases):
-        return "Ich starte neu.", [{"action": "system", "system_action": "reboot"}], ""
+        return "Restarting now.", [{"action": "system", "system_action": "reboot"}], ""
 
     sleep_phrases = (
         "geh schlafen",
@@ -2932,7 +2955,7 @@ def direct_local_command_from_transcript(
         "mach den bildschirm aus",
     )
     if any(is_command_phrase(phrase) for phrase in sleep_phrases):
-        return "Ich schlafe jetzt.", [], "display_sleep"
+        return "I'm going to sleep now.", [], "display_sleep"
 
     wake_phrases = (
         "wach auf",
@@ -2943,7 +2966,7 @@ def direct_local_command_from_transcript(
         "mach den bildschirm an",
     )
     if any(is_command_phrase(phrase) for phrase in wake_phrases):
-        return "Bin wach.", [{"action": "system", "system_action": "display_wake"}], ""
+        return "I'm awake.", [{"action": "system", "system_action": "display_wake"}], ""
 
     percent = parse_spoken_percent(command)
     brightness_command = "helligkeit" in command or any(
@@ -2952,31 +2975,31 @@ def direct_local_command_from_transcript(
     )
     if brightness_command:
         if percent is not None:
-            return f"Helligkeit {percent} Prozent.", [{"action": "device", "brightness_pct": percent}], ""
+            return f"Brightness {percent} percent.", [{"action": "device", "brightness_pct": percent}], ""
         if any(word in f" {command} " for word in (" heller ", " hoch ", " hoeher ", " rauf ")):
             if status is STATUS_NOT_PROVIDED:
                 return None
             if not isinstance(status, dict):
-                return "Status ist gerade nicht verfuegbar.", [{"action": "face", "emotion": "error", "intensity_pct": 55}], ""
+                return "Status isn't available just now.", [{"action": "face", "emotion": "error", "intensity_pct": 55}], ""
             current = status_percent(status, "brightness_pct", 70)
             target = clamp_int(current + 10, 0, 100)
-            return f"Helligkeit {target} Prozent.", [{"action": "device", "brightness_pct": target}], ""
+            return f"Brightness {target} percent.", [{"action": "device", "brightness_pct": target}], ""
         if any(word in f" {command} " for word in (" dunkler ", " runter ", " niedriger ")):
             if status is STATUS_NOT_PROVIDED:
                 return None
             if not isinstance(status, dict):
-                return "Status ist gerade nicht verfuegbar.", [{"action": "face", "emotion": "error", "intensity_pct": 55}], ""
+                return "Status isn't available just now.", [{"action": "face", "emotion": "error", "intensity_pct": 55}], ""
             current = status_percent(status, "brightness_pct", 70)
             target = clamp_int(current - 10, 0, 100)
-            return f"Helligkeit {target} Prozent.", [{"action": "device", "brightness_pct": target}], ""
+            return f"Brightness {target} percent.", [{"action": "device", "brightness_pct": target}], ""
 
     if "lautstaerke" in command or command in {"lauter", "leiser"} or command.startswith(("mach lauter", "mach leiser")):
         if percent is not None:
-            return f"Lautstaerke {percent} Prozent.", [{"action": "device", "volume_pct": percent}], ""
+            return f"Volume {percent} percent.", [{"action": "device", "volume_pct": percent}], ""
         if status is STATUS_NOT_PROVIDED:
             return None
         if not isinstance(status, dict):
-            return "Status ist gerade nicht verfuegbar.", [{"action": "face", "emotion": "error", "intensity_pct": 55}], ""
+            return "Status isn't available just now.", [{"action": "face", "emotion": "error", "intensity_pct": 55}], ""
         current = status_percent(status, "speaker.volume_pct", status_int_at(status, "volume_pct", 70))
         if "leiser" in command or "runter" in command or "niedriger" in command:
             target = clamp_int(current - 10, 0, 100)
@@ -2984,30 +3007,30 @@ def direct_local_command_from_transcript(
             target = clamp_int(current + 10, 0, 100)
         else:
             target = current
-        return f"Lautstaerke {target} Prozent.", [{"action": "device", "volume_pct": target}], ""
+        return f"Volume {target} percent.", [{"action": "device", "volume_pct": target}], ""
 
     if any(token in f" {command} " for token in ("led aus", "leds aus", "lampe aus", "lampen aus")):
-        return "LEDs aus.", [{"action": "led", "mode": "off"}], ""
+        return "LEDs off.", [{"action": "led", "mode": "off"}], ""
     if any(token in f" {command} " for token in ("led an", "leds an", "lampe an", "lampen an")):
-        return "LEDs an.", [{"action": "led", "mode": "solid", "r": 40, "g": 120, "b": 255}], ""
+        return "LEDs on.", [{"action": "led", "mode": "solid", "r": 40, "g": 120, "b": 255}], ""
 
     if any(token in f" {command} " for token in ("ton test", "tontest", "piep", "beep", "sound test")):
-        return "Ton.", [{"action": "sound", "pattern": "good", "frequency_hz": 880, "duration_ms": 120}], ""
+        return "Beep.", [{"action": "sound", "pattern": "good", "frequency_hz": 880, "duration_ms": 120}], ""
 
     if any(token in f" {command} " for token in ("mach foto", "mach ein foto", "mache foto", "mache ein foto", "foto machen", "kamera ausloesen")):
-        return "Foto.", [{"action": "system", "system_action": "take_photo"}], ""
+        return "Photo.", [{"action": "system", "system_action": "take_photo"}], ""
 
     if any(token in f" {command} " for token in ("kopf", "schau", "guck", "blicke")):
         if any(token in f" {command} " for token in (" links ", " nach links ")):
-            return "Links.", [{"action": "move", "direction": "left"}, {"action": "face", "emotion": "glance_left", "intensity_pct": 65}], ""
+            return "Left.", [{"action": "move", "direction": "left"}, {"action": "face", "emotion": "glance_left", "intensity_pct": 65}], ""
         if any(token in f" {command} " for token in (" rechts ", " nach rechts ")):
-            return "Rechts.", [{"action": "move", "direction": "right"}, {"action": "face", "emotion": "glance_right", "intensity_pct": 65}], ""
+            return "Right.", [{"action": "move", "direction": "right"}, {"action": "face", "emotion": "glance_right", "intensity_pct": 65}], ""
         if any(token in f" {command} " for token in (" oben ", " hoch ", " nach oben ")):
-            return "Hoch.", [{"action": "move", "pitch_target_pct": 65}, {"action": "face", "emotion": "glance_up", "intensity_pct": 65}], ""
+            return "Up.", [{"action": "move", "pitch_target_pct": 65}, {"action": "face", "emotion": "glance_up", "intensity_pct": 65}], ""
         if any(token in f" {command} " for token in (" unten ", " runter ", " nach unten ")):
-            return "Runter.", [{"action": "move", "pitch_target_pct": 25}, {"action": "face", "emotion": "glance_down", "intensity_pct": 65}], ""
+            return "Down.", [{"action": "move", "pitch_target_pct": 25}, {"action": "face", "emotion": "glance_down", "intensity_pct": 65}], ""
         if any(token in f" {command} " for token in (" mitte ", " gerade ", " grade ", " zentrum ")):
-            return "Mitte.", [{"action": "move", "yaw_target_pct": 0, "pitch_target_pct": DEFAULT_IDLE_PITCH_PCT}, {"action": "face", "emotion": "neutral", "intensity_pct": 60}], ""
+            return "Centre.", [{"action": "move", "yaw_target_pct": 0, "pitch_target_pct": DEFAULT_IDLE_PITCH_PCT}, {"action": "face", "emotion": "neutral", "intensity_pct": 60}], ""
 
     status_reply = direct_status_reply_from_transcript(command, status)
     if status_reply:
@@ -3667,7 +3690,7 @@ def build_sensor_reaction_actions(
             actions.extend([
                 {"action": "led", "mode": "blink", "r": 255, "g": 0, "b": 0},
                 {"action": "face", "emotion": "help", "intensity_pct": 94},
-                {"action": "display", "mode": "text", "text": "HILFE!", "duration_ms": 4500},
+                {"action": "display", "mode": "text", "text": "HELP!", "duration_ms": 4500},
                 {"action": "local_tts", "text": SENSOR_SIDE_HELP_TEXT},
             ])
             reasons.append("sideways")

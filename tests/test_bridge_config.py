@@ -705,7 +705,7 @@ class BridgeConfigTests(unittest.TestCase):
     def test_direct_spoken_system_commands(self) -> None:
         self.assertEqual(
             direct_system_command_from_transcript("Geh schlafen.")[:2],
-            ("Ich schlafe jetzt.", []),
+            ("I'm going to sleep now.", []),
         )
         self.assertEqual(direct_system_command_from_transcript("Geh schlafen.")[2], "display_sleep")
         self.assertEqual(direct_system_command_from_transcript("StackChan runterfahren.")[2], "shutdown")
@@ -719,8 +719,8 @@ class BridgeConfigTests(unittest.TestCase):
         volume = direct_local_command_from_transcript("Computer Lautstaerke auf 55.")
         display = direct_local_command_from_transcript("Display aus.")
 
-        self.assertEqual(brightness, ("Helligkeit 80 Prozent.", [{"action": "device", "brightness_pct": 80}], ""))
-        self.assertEqual(volume, ("Lautstaerke 55 Prozent.", [{"action": "device", "volume_pct": 55}], ""))
+        self.assertEqual(brightness, ("Brightness 80 percent.", [{"action": "device", "brightness_pct": 80}], ""))
+        self.assertEqual(volume, ("Volume 55 percent.", [{"action": "device", "volume_pct": 55}], ""))
         self.assertEqual(display[2], "display_sleep")
 
     def test_direct_local_relative_device_commands_use_status(self) -> None:
@@ -729,8 +729,8 @@ class BridgeConfigTests(unittest.TestCase):
         brighter = direct_local_command_from_transcript("Mach heller.", status)
         quieter = direct_local_command_from_transcript("Mach leiser.", status)
 
-        self.assertEqual(brighter, ("Helligkeit 55 Prozent.", [{"action": "device", "brightness_pct": 55}], ""))
-        self.assertEqual(quieter, ("Lautstaerke 70 Prozent.", [{"action": "device", "volume_pct": 70}], ""))
+        self.assertEqual(brighter, ("Brightness 55 percent.", [{"action": "device", "brightness_pct": 55}], ""))
+        self.assertEqual(quieter, ("Volume 70 percent.", [{"action": "device", "volume_pct": 70}], ""))
         self.assertIsNone(direct_local_command_from_transcript("Mach leiser."))
         self.assertTrue(local_command_may_need_status("Mach leiser."))
 
@@ -757,47 +757,47 @@ class BridgeConfigTests(unittest.TestCase):
             },
         }
 
-        self.assertIn("Akku 82 Prozent", direct_local_command_from_transcript("Wie ist dein Akku?", status)[0])
-        self.assertIn("SoC 41 Grad", direct_local_command_from_transcript("Temperatur?", status)[0])
-        self.assertEqual(direct_local_command_from_transcript("Wie ist die Helligkeit?", status)[0], "Helligkeit 66 Prozent.")
-        self.assertEqual(direct_local_command_from_transcript("Wie ist die Lautstaerke?", status)[0], "Lautstaerke 44 Prozent.")
-        self.assertIn("Naehe erkannt", direct_local_command_from_transcript("Ist mein Finger am Sensor?", status)[0])
-        self.assertEqual(direct_local_command_from_transcript("Liegst du auf der Seite?", status)[0], "Ich liege auf der Seite.")
-        self.assertIn("Bewegung erkannt", direct_local_command_from_transcript("Wirst du geschuettelt?", status)[0])
+        self.assertIn("Battery 82 percent", direct_local_command_from_transcript("Wie ist dein Akku?", status)[0])
+        self.assertIn("SoC 41C", direct_local_command_from_transcript("Temperatur?", status)[0])
+        self.assertEqual(direct_local_command_from_transcript("Wie ist die Helligkeit?", status)[0], "Brightness 66 percent.")
+        self.assertEqual(direct_local_command_from_transcript("Wie ist die Lautstaerke?", status)[0], "Volume 44 percent.")
+        self.assertIn("Proximity detected", direct_local_command_from_transcript("Ist mein Finger am Sensor?", status)[0])
+        self.assertEqual(direct_local_command_from_transcript("Liegst du auf der Seite?", status)[0], "I'm on my side.")
+        self.assertIn("Motion detected", direct_local_command_from_transcript("Wirst du geschuettelt?", status)[0])
 
     def test_direct_local_time_calendar_answers_skip_hermes(self) -> None:
         now = dt.datetime(2026, 5, 12, 14, 30)
 
-        self.assertEqual(direct_local_command_from_transcript("Wie spaet ist es?", now=now)[0], "Es ist 14 Uhr 30.")
-        self.assertEqual(direct_local_command_from_transcript("Welcher Wochentag ist heute?", now=now)[0], "Heute ist Dienstag.")
+        self.assertEqual(direct_local_command_from_transcript("Wie spaet ist es?", now=now)[0], "It's 14:30.")
+        self.assertEqual(direct_local_command_from_transcript("Welcher Wochentag ist heute?", now=now)[0], "Today is Tuesday.")
         self.assertEqual(
             direct_local_command_from_transcript("Welches Datum haben wir?", now=now)[0],
-            "Heute ist Dienstag, der 12. Mai 2026.",
+            "Today is Tuesday, 12 May 2026.",
         )
-        self.assertEqual(direct_local_command_from_transcript("Ist heute Dienstag?", now=now)[0], "Ja, heute ist Dienstag.")
-        self.assertIn("Kalenderwoche 20", direct_local_command_from_transcript("Welche Kalenderwoche?", now=now)[0])
-        self.assertIn("9 Stunden und 30 Minuten", direct_local_command_from_transcript("Wie lange bis Mitternacht?", now=now)[0])
+        self.assertEqual(direct_local_command_from_transcript("Ist heute Dienstag?", now=now)[0], "Yes, today is Tuesday.")
+        self.assertIn("Week 20", direct_local_command_from_transcript("Welche Kalenderwoche?", now=now)[0])
+        self.assertIn("9 hours and 30 minutes", direct_local_command_from_transcript("Wie lange bis Mitternacht?", now=now)[0])
         info = direct_local_command_from_transcript("Zeige Datum und Uhrzeit.", now=now)
-        self.assertEqual(info[0], "Info Modus.")
+        self.assertEqual(info[0], "Info mode.")
         self.assertEqual(info[1][0]["action"], "info")
 
     def test_direct_local_reminder_timer_math_and_random_skip_hermes(self) -> None:
         now = dt.datetime(2026, 5, 12, 14, 30)
 
         timer = direct_local_command_from_transcript("Stell einen Timer auf 5 Minuten.", now=now)
-        self.assertEqual(timer[0], "Timer auf 5 Minuten gestellt.")
+        self.assertEqual(timer[0], "Timer set for 5 minutes.")
         self.assertEqual(timer[1][1]["action"], "reminder")
         self.assertEqual(timer[1][1]["delay_s"], 300)
 
         reminder = direct_local_command_from_transcript("Erinnere mich in 10 Minuten an Tee.", now=now)
-        self.assertEqual(reminder[0], "Erinnerung gestellt.")
+        self.assertEqual(reminder[0], "Reminder set.")
         self.assertEqual(reminder[1][1]["text"], "tee")
         self.assertEqual(reminder[1][1]["delay_s"], 600)
 
         self.assertIsNone(direct_local_command_from_transcript("Erinnere mich bitte.", now=now))
-        self.assertEqual(direct_local_command_from_transcript("Was ist 3 plus 4?")[0], "Das sind 7.")
-        self.assertEqual(direct_local_command_from_transcript("Was sind 20 Prozent von 50?")[0], "Das sind 10.")
-        self.assertTrue(direct_local_command_from_transcript("Wuerfel.")[0].startswith("Ich wuerfle "))
+        self.assertEqual(direct_local_command_from_transcript("Was ist 3 plus 4?")[0], "That's 7.")
+        self.assertEqual(direct_local_command_from_transcript("Was sind 20 Prozent von 50?")[0], "That's 10.")
+        self.assertTrue(direct_local_command_from_transcript("Wuerfel.")[0].startswith("I roll a "))
 
     def test_direct_local_more_device_commands_skip_hermes(self) -> None:
         self.assertEqual(direct_local_command_from_transcript("Kopf nach links.")[1][0]["direction"], "left")
@@ -1122,8 +1122,8 @@ class BridgeConfigTests(unittest.TestCase):
         self.assertEqual([action["action"] for action in side_actions], ["led", "face", "display", "local_tts"])
         self.assertEqual(side_actions[0], {"action": "led", "mode": "blink", "r": 255, "g": 0, "b": 0})
         self.assertEqual(side_actions[1]["emotion"], "help")
-        self.assertEqual(side_actions[2]["text"], "HILFE!")
-        self.assertIn("umgekippt", side_actions[3]["text"])
+        self.assertEqual(side_actions[2]["text"], "HELP!")
+        self.assertIn("fallen over", side_actions[3]["text"])
 
         pitched_head = self.sensor_status(accel_x=90, accel_y=430, accel_z=870)
         self.assertFalse(sensor_status_is_sideways(pitched_head))
@@ -1138,7 +1138,7 @@ class BridgeConfigTests(unittest.TestCase):
         self.assertEqual(upright_actions[0], {"action": "led", "mode": "off", "r": 0, "g": 0, "b": 0})
         self.assertEqual(upright_actions[1], {"action": "face", "emotion": "thankful", "intensity_pct": 82})
         self.assertEqual(upright_actions[2]["speed_pct"], 72)
-        self.assertIn("Danke", upright_actions[3]["text"])
+        self.assertIn("Thanks", upright_actions[3]["text"])
 
     def test_sensor_reaction_upright_always_turns_leds_off(self) -> None:
         state = SensorReactionState()
@@ -1170,7 +1170,7 @@ class BridgeConfigTests(unittest.TestCase):
         self.assertEqual(first_actions[0]["mode"], "party")
         self.assertEqual(first_actions[1]["emotion"], "face_down")
         self.assertEqual(first_actions[2]["text"], "NICHT AUFS GESICHT!")
-        self.assertIn("Nicht aufs Gesicht", first_actions[4]["text"])
+        self.assertIn("Not on my face", first_actions[4]["text"])
         self.assertEqual(quiet_actions, [])
         self.assertEqual(repeat_reasons, ["face_down"])
         self.assertEqual([action["action"] for action in repeat_actions], ["led", "face", "display", "motion"])
